@@ -1,0 +1,467 @@
+66	N
+21 club	N
+24 prince	Y
+71 clinton fresh food	N
+abbondanzas	N
+aces and eights saloon	N
+acqua pazza	N
+agra	Y
+aix brasserie	N
+aj maxwells steakhouse	Y
+aka	N
+alouette	Y
+amalia	Y
+american grill	N
+amma	Y
+ammos estiatorio	Y
+amy ruths	Y
+angelica kitchen	Y
+anh	N
+annies	N
+any time	N
+aoc	Y
+aoc bedford	N
+archipelago	N
+arezzo	N
+arqua	Y
+arriba arriba	Y
+ashtons bar and	Y
+asia grill	Y
+asiana	N
+askew	N
+au mandarin	Y
+aureole	Y
+aurora	Y
+avon bistro	N
+azza	N
+b smiths	Y
+babbo	Y
+bagicha	N
+baker street	Y
+baldoria	N
+bamn	N
+bao 111	N
+bar martignetti	N
+bar milano	N
+bar q	N
+barbetta	Y
+barfry	N
+barking dog luncheonette	Y
+barna	N
+barocco kitchen	N
+basso est	N
+baton rouge	N
+becco	Y
+bellizzis	N
+belly delly deli	N
+bens kosher deli	Y
+bergdorf goodman	N
+bette	N
+bistro 2 go	N
+bistro ten 18	Y
+black pearl	N
+bloomingdale road	N
+blue 9 burger	Y
+blue mill	N
+bolo	N
+bond st	Y
+bongo	Y
+boom	Y
+brasserie 52	N
+bread	Y
+breakfast at four seasons hotel new york	N
+brick lane curry house	Y
+bricklane curry house	Y
+bright food shop	N
+brio	Y
+broncas	N
+brooklyn bagel	N
+brookvin	Y
+brouwers of stone street	N
+bull run	N
+bun	Y
+burritoville	N
+buttercup bake shop	Y
+buzina pop	Y
+cafe 50 west	Y
+cafe fuego	N
+cafe gray	N
+cafe mozart	N
+cafe pierre	N
+cafe ronda	Y
+cafe socialista	N
+cafeteria	Y
+caffe falai	N
+caffe swish	N
+candle	Y
+cannonau	Y
+canyon road	Y
+carne	N
+casa bella	Y
+casa la femme north	N
+casbah rouge	N
+casimir	N
+cecel crepe	N
+celeste	N
+cendrillon	N
+chanto	N
+charles southern style kitchen	N
+chatham square	N
+chens garden	N
+cheung shing	N
+cheyenne diner	N
+chez brigitte	N
+chickpea	N
+chikalicious dessert bar	Y
+chimichurri grill	Y
+china de puebla	N
+chocolate bar	N
+chop suey	N
+cibo	Y
+city lobster and crab co	Y
+coffee shop	Y
+coogans	Y
+core one nine one	N
+cosmic cantina	N
+crave ceviche bar	N
+crave on 42nd	N
+crispo	Y
+cru	Y
+cuba	Y
+da andrea	Y
+da nico	Y
+da umberto	Y
+dae dong	N
+dani	N
+dano	N
+danube	N
+davidburke and donatella	N
+daydream	Y
+deborah	N
+decade	N
+degrezia	Y
+delicia	N
+delphi	N
+demerara	N
+dennis foy	N
+devin tavern	N
+diner 24	N
+diwan	N
+django	N
+docks	Y
+dojo	Y
+dolce vita	N
+dragonfly	N
+dresners	Y
+earth nyc	Y
+east bay	Y
+east of eighth	Y
+east village yacht club	N
+edgars	Y
+eighty one	Y
+el cid	N
+elyssa dido	N
+empanada joes	N
+english is italian	N
+enoteca i trulli	Y
+erminia	Y
+essex	Y
+famous fish market	Y
+fat hippo	Y
+fiamma	N
+filli ponte	Y
+firebird russian	Y
+firenze	N
+flavored with one love	N
+fleur de sel	N
+florent	N
+flors kitchen	N
+food	N
+food world	N
+forge	Y
+franklin station	N
+franks	N
+fredericks madison	Y
+fresh	Y
+friedmans delicatessen	Y
+frog	Y
+funky diner	N
+gaam	N
+gaby	Y
+gallaghers steak house	Y
+gin lane	N
+ginger	N
+giorgione 508	N
+goodies	N
+gotham bar and grill	Y
+grace	N
+gracie mews	Y
+grayz	N
+greenwich steak and burger	N
+grotta del mare	N
+hakata grill	Y
+happy taco	N
+hasaki	Y
+havana chelsea	N
+hawaiian tropic zone	N
+health conscious express	N
+heidelberg	Y
+hill country	Y
+hip hop chow	N
+how sweet it is	N
+hq	N
+hsf	N
+hurapan kitchen	N
+i tre merli	Y
+il giglio	Y
+il melograno	N
+incredi fusion	Y
+insomnia cookies	N
+isabellas oven	N
+isadoras	Y
+its a dominican thing	N
+jacques-imos	N
+jaipurs	N
+jerrys	N
+jewel bako makimono	N
+joannas	N
+joedoe	Y
+kam chueh	N
+katzs deli	Y
+kin khao	N
+kings carriage house	Y
+kion	Y
+kitchen 22	N
+kittichai	Y
+kraft	N
+krour thai	N
+kyma	N
+la barra	N
+la cantina toscana	N
+la casalinga	N
+la cote basque	N
+la goulue	N
+la grenouille	Y
+la hacienda	N
+la rosita	N
+la taza de oro	Y
+la zarza	Y
+lan	Y
+le gigot	Y
+le madeleine	N
+le miu	N
+le monde	Y
+le streghe	N
+le tableau	N
+lenge japanese	N
+lentrecote	N
+limas taste	N
+lola	N
+lomito	N
+lonesome dove	N
+lorange bleue	Y
+loside	N
+lotus	N
+lucilles grill	N
+lunetta	N
+lupa	N
+macelleria	Y
+madaleine mae	N
+malatesta trattoria	Y
+mamas mudsliders	N
+mamlouk	N
+mandlers: the original sausage co	N
+manhattan ocean club	N
+march	N
+maremma	N
+marions continental	N
+maroons	N
+mary anns mexican	Y
+mas	Y
+masala bollywood	N
+masas	Y
+matador	N
+maya	Y
+mayrose	N
+mekong	N
+meli melo	Y
+meridiana	Y
+mesa grill	Y
+metsovo	N
+mexican radio	Y
+mi cocina	N
+mill korean	Y
+mimas cubanfusion	N
+miracle bar and grill	N
+miracle grill	N
+miss maudes spoonbread too	Y
+miss saigon	N
+mo pitkins	N
+mobay uptown	Y
+moksha	N
+momofuku ssam bar	Y
+monkey bar	N
+my befana	N
+naples	Y
+negril caribbean	Y
+neptune room	N
+ninos positano	N
+ninth street market	N
+nish	N
+north west	N
+novecento	Y
+novo	N
+old devil moon	N
+one if by land two if by sea	Y
+onera	N
+osso buco	Y
+osteria del sole	N
+osteria gelsi	N
+pacific echo	N
+palacinka	N
+palm court	N
+pamir	N
+pane e cioccolato	N
+panificio	N
+panya	N
+panya bakery	N
+paper moon express	N
+paradou marche	N
+parea	Y
+park terrace bistro	N
+pauls boutique	N
+peking duck house	Y
+perks fine cuisine	Y
+persimmon	Y
+pho 32 and shabu	Y
+pho tu do	N
+pier 2110	N
+pig heaven	Y
+pio maya	N
+pizza bar	N
+pizza lucca	N
+pizzeria de santo	N
+pj carneys	N
+porto-bello	Y
+post house	Y
+prem-on thai	N
+press	Y
+primitivo osteria	N
+push	N
+q2 thai	Y
+quantum leap natural food	Y
+quintessence	Y
+radha	N
+radio mexico	N
+rainbow grill	N
+rainbow room grill	N
+remi	Y
+rene pujol	N
+revel	Y
+rhong-tiam	N
+ribot	N
+room 4 dessert	N
+roppongi	N
+rosie ogradys	Y
+rosie ogradys midtown	Y
+roys new york	N
+rub	Y
+ruby foos	N
+sahara grill	N
+sakae sushi	N
+san luigi italian kitchen	N
+santa fe	Y
+sapa	N
+savoy	Y
+senor swankys	N
+sequoia	Y
+seymour burton	N
+sezz medi	Y
+shaan of india	N
+sigiri	Y
+silver swan	N
+smokin q	N
+socialista	N
+solace	N
+soul fixins	Y
+sounkyo sushi	Y
+spankys bbq	N
+spotlight live	N
+stanton	N
+suba	N
+sugar hill bistro	N
+sweet-n-tart	N
+sylvias	Y
+tahini	Y
+talias steakhouse and bar	Y
+tang pavilion	Y
+tarabia	N
+tasca	N
+tavalon tea bar	Y
+the eu	N
+the neptune room	N
+the palm court	N
+the place on west 10th	N
+the tasting room	N
+tibetan kitchen	Y
+tintol	N
+tokyo lamen	N
+tokyo pop	N
+tomo	N
+totally baked	N
+tropica	N
+turkish cuisine	Y
+turkuaz	Y
+tuscan square	N
+ulysses	Y
+una pizza napoletana	Y
+union square	Y
+upstairs	N
+valdino west	N
+vanessas dumplings	N
+varietal	N
+vegetarian dim sum house	Y
+vento	Y
+veritas	Y
+veselka	Y
+via oreto	N
+viceroy	Y
+viet	Y
+villa mosconi	Y
+village mingala	N
+village yokocho	Y
+vince and eddies	Y
+vintage new york winebar	N
+virage	Y
+viva herbal	Y
+waikiki wallys	N
+wakiya	N
+waldys wood-fired pizza and penne	Y
+waverly	Y
+waverly inn	N
+wawa canteen	Y
+wd-50	Y
+westville	Y
+westville east	Y
+wichcraft	Y
+win49	N
+won jo	Y
+xo kitchen	Y
+xunta	Y
+yaffa	Y
+yakiniku west	Y
+yakitori taisho	Y
+yama	N
+yeah shanghai deluxe	Y
+yolato	N
+yoshi	Y
+zaitzeff	Y
+zen burger	N
+zerza mediterrano	Y
+ziggiz	Y
+zip burger	N
+zocalo	N
+zoe	Y
+zoe townhouse	N
+zona rosa	N
+zum schneider	Y

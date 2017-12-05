@@ -10,9 +10,14 @@ class RandomData:
 
     @staticmethod
     def generate():
-        claims = set()
-        claims.add(Claim("obama", "born_in", "kenya"))
-        claims.add(Claim("obama", "born_in", "usa"))
-        claims.add(Claim("obama", "born_in", "indonesia"))
-        claims.add(Claim("obama", "born_in", "usa"))
+        """
+        This method generate randomly a list of claims
+        :return: a list of claims
+        :rtype: Claim
+        """
+        claims = list()
+        claims.append(Claim("obama", "born_in", "kenya"))
+        claims.append(Claim("obama", "born_in", "usa"))
+        claims.append(Claim("obama", "born_in", "indonesia"))
+        claims.append(Claim("obama", "born_in", "usa"))
         return claims

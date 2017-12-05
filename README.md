@@ -31,8 +31,23 @@ Currently it implements the following algorithm:
    be just *s1* or *extractor1_url1*, which means this claim was produced by *extractor1* from
    web site at *url1*.
    
-**Metric**
 
-## Examples
+## Datasets
+
+We collect a number of datasets that were used in researches.
+
+You can find the following datasets with their description in data/original/ together with their
+descriptions.
+
+1. **stock**
+2. **books** 
+3. **flights**
+4. **restaurant**
+5. **weather** 
    
+These datasets are all collected from this [website](http://lunadong.com/fusionDataSets.htm). When you use
+these datasets please cite their papers.
 
+We also collect datasets from [here.](http://da.qcri.org/dafna/#/dafna/exp_sections/realworldDS/flight.html)
+Most of the datasets found here overlaps with the above datasets. But they are already processed. 
+You can find these processed versions in data/

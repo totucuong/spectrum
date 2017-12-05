@@ -1,0 +1,9 @@
+V. Weather (Contributors: Laure Berti-Equille, Luna Dong)
+
+We collected weather data on 30 major USA cities from 18 websites every 45 minutes on a day in Mar, 2010. Detailed description of the data can be found at
+
+Xin Luna Dong, Laure Berti-Equille, Yifan Hu, and Divesh Srivastava. Global detection of complex copying relationships between sources. In VLDB, 2010. [PDF][Full paper][Presentation]
+
+Data: Data from 18 sources. The schema is provided at the beginning of each data file. [download]
+
+Gold standards: A gold standard and a silver standard on source copying relationships are provided in the paper.

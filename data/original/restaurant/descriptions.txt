@@ -1,0 +1,12 @@
+IV. Restaurant (Contributors: Laure Berti-Equille, Luna Dong)
+
+We collected Manhattan restaurants listed by 12 websites weekly in Jan-Mar, 2009. Detailed description of the data can be found at
+
+Xin Luna Dong, Laure Berti-Equille, and Divesh Srivastava. Truth discovery and copying detection in a dynamic world. In VLDB, 2009. [PDF][Presentation][Full paper]
+
+Data: 12 snapshots of restaurants. [download].
+
+    Source	Restaurant name	Address
+
+Gold standard: We called the 467 restaurants that were removed by some websites to decide if the business is still open. The gold standard contains for each restaurant information about whether the business is still open ("Y"). [download]
+

@@ -1,0 +1,18 @@
+I. Stock (Contributors: Xian Li, Kenneth B. Lyons)
+
+We collected trading data of 1000 stock symbols from 55 sources on every work day in July 2011. Detailed description of the data can be found at
+
+Xian Li, Xin Luna Dong, Kenneth Lyons, Weiyi Meng, and Divesh Srivastava. Truth Finding on the Deep Web: Is the Problem Solved? In VLDB, 2013. [PDF][Full paper]
+
+Raw data: Data set with all provided attributes and values extracted from web page before schema mapping. [download]
+
+Clean data: Data set after manual schema mapping. [download] The schema after manual schema mapping is
+
+Source	Symbol	Change %	Last trading price	Open price	Change $	Volume	Today's high	Today's low	Previous close	52wk High	52wk Low	Shares Outstanding	P/E	Market cap	Yield	Dividend	EPS
+Gold standards: We provide three gold standards:
+
+Information on NASDAQ100 stocks collected from nasdaq.com. [download]
+
+Information on NASDAQ100 stocks collected by taking the majority values provided by five stock data providers: nasdaq.com, yahoo finance, google finance, bloomberg and MSN finance. [download]
+
+Information on NASDAQ100 stocks and another 100 randomly selected stocks collected by taking the majority values provided by five stock data providers: nasdaq.com, yahoo finance, google finance, bloomberg and MSN finance. [download]

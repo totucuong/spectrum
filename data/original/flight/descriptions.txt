@@ -1,0 +1,14 @@
+II. Flight (Contributors: Xian Li, Kenneth B. Lyons)
+
+We collected information of over 1200 flights from 38 sources over 1-month period (December 2011). Detailed description of the data can be found at
+
+Xian Li, Xin Luna Dong, Kenneth Lyons, Weiyi Meng, and Divesh Srivastava. Truth Finding on the Deep Web: Is the Problem Solved? In VLDB, 2013. [PDF][Full paper]
+
+Other papers using this data set:
+
+Xin Luna Dong, Barna Saha, and Divesh Srivastava. Less is More: Selecting Sources Wisely for Integration. In VLDB, 2013. [PDF][Full paper]
+
+Data: Flight data set after manual schema mapping. [download]
+
+Source	Flight#	Scheduled departure	Actual departure	Departure gate	Scheduled arrival	Actual arrival	Arrival gate
+Gold standard: The gold standard contains departure/arrival information on 100 randomly selected flights provided by corresponding airline websites. [download]
