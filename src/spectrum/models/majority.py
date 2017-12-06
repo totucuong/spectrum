@@ -8,7 +8,7 @@ from spectrum.models.claim import Claim
 class MajorityVote:
     """
     This class implement basic knowledge fusion using majority voting. That is, among conflicting claims, the claim that
-    recive the highest votes from data sources will be considered as the correct claim.
+    recive the highest votes from datasets sources will be considered as the correct claim.
     """
 
     def __init__(self):
@@ -39,8 +39,8 @@ class MajorityVote:
             true_v = max(count, key=count.get)
             self.resolved_claims[sp].append(true_v)
 
-
-    def get_resolved_claims(self):
+    @property
+    def truths(self):
         return self.resolved_claims
 
 

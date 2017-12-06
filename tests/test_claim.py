@@ -11,8 +11,3 @@ class TestClaim(TestCase):
         claim = Claim()
         assert claim.confidence == 1
 
-    def test_set_subject(self):
-        claim = Claim()
-        claim.subject = 'albert_einstein'
-        assert claim.subject == 'albert_einstein'
-
