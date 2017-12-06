@@ -16,8 +16,8 @@ class RandomData:
         :rtype: Claim
         """
         claims = list()
-        claims.append(Claim("obama", "born_in", "kenya"))
-        claims.append(Claim("obama", "born_in", "usa"))
-        claims.append(Claim("obama", "born_in", "indonesia"))
-        claims.append(Claim("obama", "born_in", "usa"))
+        claims.append(Claim("obama", "born_in", "kenya", source='fake.com'))
+        claims.append(Claim("obama", "born_in", "usa", source='true.com'))
+        claims.append(Claim("obama", "born_in", "indonesia", source='xyz.com'))
+        claims.append(Claim("obama", "born_in", "usa", source='affirmative.com'))
         return claims

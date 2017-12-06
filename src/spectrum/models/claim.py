@@ -19,6 +19,9 @@ class Claim:
         str = '[%s,%s,%s, by %s]' % (self.__subject, self.__predicate, self.__object, self.__source)
         return str
 
+    @property
+    def source(self):
+        return self.__source
 
     @property
     def confidence(self):

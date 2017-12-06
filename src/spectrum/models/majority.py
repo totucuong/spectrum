@@ -19,13 +19,9 @@ class MajorityVote:
     def fit(self, claims):
         """
         Resolve claims to true claims
-        :param claims: list of claims
-        :type claims: each claim is of type Claim
-        :return: none
-        :rtype: none
         """
         for c in claims:
-            self.claims[c.subject+ '|' + c.predicate].append(c.object)
+            self.claims[c.subject+ '|' + c.predicate].append(c)
 
         self.__resolve()
 
@@ -33,11 +29,12 @@ class MajorityVote:
     def __resolve(self):
         for sp in self.claims.keys():
             count = collections.defaultdict(lambda: 0)
-            for o in self.claims[sp]:
-                count[o] = count[o] + 1
-
+            invert = collections.defaultdict(lambda : list())
+            for c in self.claims[sp]:
+                count[c.object] = count[c.object] + 1
+                invert[c.object].append(c)
             true_v = max(count, key=count.get)
-            self.resolved_claims[sp].append(true_v)
+            self.resolved_claims[sp].extend(invert[true_v])
 
     @property
     def truths(self):
