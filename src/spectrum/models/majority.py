@@ -4,29 +4,34 @@ __date__ = '12/5/17'
 import collections
 
 from spectrum.models.claim import Claim
+from spectrum.models.judge import Judge
 
-class MajorityVote:
+class MajorityVote(Judge):
     """
     This class implement basic knowledge fusion using majority voting. That is, among conflicting claims, the claim that
     recive the highest votes from datasets sources will be considered as the correct claim.
     """
 
+    #
+    #
+    # def fit(self, claims):
+    #     """
+    #     Resolve claims to true claims
+    #     """
+    #     for c in claims:
+    #         self.claims[c.subject+ '|' + c.predicate].append(c)
+    #
+    #     self.__resolve()
     def __init__(self):
-        self.claims = collections.defaultdict(lambda: list())
-        self.resolved_claims = collections.defaultdict(lambda: list())
+        super().__init__()
 
 
     def fit(self, claims):
-        """
-        Resolve claims to true claims
-        """
+        # index claims
         for c in claims:
-            self.claims[c.subject+ '|' + c.predicate].append(c)
+            self.claims[c.subject + '|' + c.predicate].append(c)
 
-        self.__resolve()
-
-
-    def __resolve(self):
+        # resolve claims
         for sp in self.claims.keys():
             count = collections.defaultdict(lambda: 0)
             invert = collections.defaultdict(lambda : list())
@@ -36,12 +41,5 @@ class MajorityVote:
             true_v = max(count, key=count.get)
             self.resolved_claims[sp].extend(invert[true_v])
 
-    @property
-    def truths(self):
-        return self.resolved_claims
-
-
-
-
-
+        fitted = True
 

@@ -1,7 +1,7 @@
 __author__ = 'totucuong'
 __date__ = '12/6/17'
 
-from abc import abstractmethod, ABCMeta
+from abc import abstractmethod
 from spectrum.models.claim import  Claim
 
 class Data:
