@@ -4,7 +4,7 @@ __date__ = '12/5/17'
 import collections
 
 from spectrum.models.claim import Claim
-from spectrum.models.judge import Judge
+from spectrum.inferences.judge import Judge
 
 class MajorityVote(Judge):
     """

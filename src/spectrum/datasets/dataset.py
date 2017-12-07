@@ -2,12 +2,11 @@ __author__ = 'totucuong'
 __date__ = '12/6/17'
 
 from abc import abstractmethod
-from spectrum.models.claim import  Claim
+from spectrum.models.claim import Claim
 
-class Data:
+class DataSet:
 
-    def __init__(self, data_home=None):
-        self.data_home = data_home
+    def __init__(self):
         self.__claims = list()
         self.__truths = list()
 
