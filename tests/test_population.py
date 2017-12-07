@@ -1,15 +1,9 @@
 from unittest import TestCase
-
-__author__ = 'totucuong'
-__date__ = '12/6/17'
-
-DATA_HOME = '../data/'
-
 from spectrum.datasets.population import Population
 
 class TestPopulation(TestCase):
     def setUp(self):
-        self.population = Population(DATA_HOME)
+        self.population = Population()
 
     def test_nclaims(self):
         assert self.population.nclaims == 49955

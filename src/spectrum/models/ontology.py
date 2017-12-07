@@ -1,6 +1,3 @@
-__author__ = 'totucuong'
-__date__ = '12/6/17'
-
 class Entity:
     """
     This class model an entity in the world.
