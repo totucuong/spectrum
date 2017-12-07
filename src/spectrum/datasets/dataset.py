@@ -11,7 +11,7 @@ class DataSet:
         self.__truths = list()
 
     @staticmethod
-    def parse(records, sub_key=None, pred_key=None, obj_key=None, src_key=None, type=None):
+    def parse(records, sub_key=None, pred_key=None, obj_key=None, src_key=None, conf_key=None, type=None):
         """
         This method parse a list of records, i.e., dictionaries, into triples (subject, predicate, object).
         There are two kind of records: table record and triple records.
@@ -26,8 +26,22 @@ class DataSet:
             predicate = pred_key (not record[pred_key]), i.e., the header of a table column is the predicate
             object = record[pred_key]
 
+        Parameters
+        ----------
+        records: a list of records. Each record is a dictionary.
+        sub_key: key of the subject field
+        pred_key: key of predicate field
+        src_key: key of source field
+        conf_key: key of confidence field
+        type: type of record.
+            'triple'
+            'table'
+
+        Returns
+        -------
+        a list of Claims
         """
-        if type is None:
+        if type is None or type not in {'triple', 'table'}:
             raise ValueError("type must be specified from {triple, table}")
 
         facts = []
@@ -38,13 +52,14 @@ class DataSet:
             else:
                 # with source info
                 facts = [Claim(r[sub_key], predicate, r[pred_key], r[src_key]) for r in records]
-        elif type == 'triple':
-            if src_key is None:
-                facts = [Claim(r[sub_key], r[pred_key], r[obj_key]) for r in records]
-            else:
-                facts = [Claim(r[sub_key], r[pred_key], r[obj_key], r[src_key]) for r in records]
         else:
-            raise ValueError("%s type is not acceptable" % type)
+            if (src_key is None) and (conf_key is None) :
+                facts = [Claim(r[sub_key], r[pred_key], r[obj_key]) for r in records]
+            elif conf_key is None:
+                facts = [Claim(r[sub_key], r[pred_key], r[obj_key], r[src_key]) for r in records]
+            else:
+                facts = [Claim(r[sub_key], r[pred_key], r[obj_key], r[src_key], r[conf_key]) for r in records]
+
 
         return facts
 
@@ -82,3 +97,32 @@ class DataSet:
         stats['#claims'] = self.nclaims
         stats['#truths'] = self.ntruths
         return stats.__str__()
+
+class DefaultDataSet(DataSet):
+    """
+    Load claims/truths from files
+
+    Parameters
+    ----------
+    claim_path: path to claims file
+    truth_path: path to truth file
+    """
+    def __init__(self, claim_path=None, truth_path=None):
+        super().__init__()
+        if claim_path is None:
+            raise ValueError('claim_path must be supplied')
+        self.__claim_path = claim_path
+        self.__truth_path = truth_path
+        self.__populate()
+
+    def __populate(self):
+        self.claims = self.__read_from(self.__claim_path)
+        self.truths = self.__read_from(self.__truth_path)
+
+    def __read_from(self, file_path):
+        facts = list()
+        with open(file_path, 'r') as f:
+            for l in f:
+                fields = l.split(',')
+                facts.append(Claim(*fields))
+        return facts
