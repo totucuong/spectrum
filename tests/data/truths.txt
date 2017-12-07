@@ -1,0 +1,2 @@
+obama,born_in,usa
+obama,profession,lawyer

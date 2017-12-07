@@ -1,6 +1,3 @@
-__author__ = 'totucuong'
-__date__ = '12/5/17'
-
 from spectrum.models.claim import Claim
 
 class RandomData:
@@ -16,8 +13,8 @@ class RandomData:
         :rtype: Claim
         """
         claims = list()
-        claims.append(Claim("obama", "born_in", "kenya"))
-        claims.append(Claim("obama", "born_in", "usa"))
-        claims.append(Claim("obama", "born_in", "indonesia"))
-        claims.append(Claim("obama", "born_in", "usa"))
+        claims.append(Claim("obama", "born_in", "kenya", 'fake.com'))
+        claims.append(Claim("obama", "born_in", "usa", 'true.com'))
+        claims.append(Claim("obama", "born_in", "indonesia", 'xyz.com'))
+        claims.append(Claim("obama", "born_in", "usa", 'affirmative.com'))
         return claims

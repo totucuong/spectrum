@@ -1,0 +1,5 @@
+obama,born_in,kenya
+obama,born_in,usa
+obama,born_in,hawai
+obama,profession,president_of_usa
+obama,profession,lawyer
