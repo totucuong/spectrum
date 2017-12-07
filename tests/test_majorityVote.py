@@ -1,8 +1,4 @@
 from unittest import TestCase
-
-__author__ = 'totucuong'
-__date__ = '12/5/17'
-
 from spectrum.inferences.majority import MajorityVote
 from spectrum.datasets.random import RandomData
 from spectrum.datasets.population import Population

@@ -1,8 +1,4 @@
 from unittest import TestCase
-
-__author__ = 'totucuong'
-__date__ = '12/7/17'
-
 from spectrum.datasets.dataset import DefaultDataSet
 
 class TestDefaultDataSet(TestCase):

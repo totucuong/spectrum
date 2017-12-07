@@ -1,7 +1,3 @@
-__author__ = 'totucuong'
-__date__ = '12/5/17'
-
-
 from zipfile import ZipFile
 from spectrum.datasets.dataset import DataSet
 import ntpath

@@ -1,6 +1,3 @@
-__author__ = 'totucuong'
-__date__ = '12/5/17'
-
 import pandas as pd
 from zipfile import ZipFile
 import ntpath

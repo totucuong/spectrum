@@ -1,9 +1,4 @@
 from unittest import TestCase
-
-__author__ = 'totucuong'
-__date__ = '12/6/17'
-
-
 from spectrum.datasets.population import Population
 
 class TestPopulation(TestCase):

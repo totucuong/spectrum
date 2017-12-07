@@ -1,7 +1,3 @@
-__author__ = 'totucuong'
-__date__ = '12/5/17'
-
-
 class Claim:
     """
     This class represent a claim.
