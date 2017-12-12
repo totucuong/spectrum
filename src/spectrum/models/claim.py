@@ -9,7 +9,7 @@ class Claim:
             self.__subject = args[0]
             self.__predicate = args[1]
             self.__object = args[2]
-            self.__source = None
+            self.__source = ''
             self.confidence = 0.0
         elif len(args) == 4:
             self.__subject = args[0]
@@ -26,7 +26,7 @@ class Claim:
 
 
     def __str__(self):
-        str = '[%s,%s,%s, by %s]' % (self.__subject, self.__predicate, self.__object, self.__source)
+        str = '%s|%s|%s' % (self.__subject, self.__predicate, self.__object)
         return str
 
     @property
@@ -53,3 +53,23 @@ class Claim:
     def object(self):
         return self.__object
 
+    @property
+    def entity(self):
+        """
+        data item in truth finding literature, which is the first two of a triple: (subject,predicate)
+        """
+        return '%s|%s' % (self.subject, self.predicate)
+
+    @property
+    def fact(self):
+        """
+        return a string representation of the fact provided by this claim
+        """
+        return '%s|%s|%s' % (self.__subject, self.__predicate, self.__object)
+
+
+    def __hash__(self):
+        return hash((self.subject, self.predicate, self.object))
+
+    def __eq__(self, other):
+        return (self.subject == other.subject and self.predicate == other.predicate and self.object == other.object)
