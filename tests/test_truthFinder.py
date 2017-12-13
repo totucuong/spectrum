@@ -1,20 +1,34 @@
 from unittest import TestCase
 from spectrum.datasets.random import RandomData
 from spectrum.inferences.truthfinder import TruthFinder
-from spectrum.models.claim import Claim
+from spectrum.models.triple import Triple
 
 class TestTruthFinder(TestCase):
-    def test_facts(self):
-        # claims = RandomData.generate()
-        claims = list()
-        claims.append(Claim("obama", "born_in", "kenya", 'fake.com'))
-        claims.append(Claim("obama", "born_in", "usa", 'true.com'))
-        claims.append(Claim("obama", "born_in", "indonesia", 'xyz.com'))
-        claims.append(Claim("obama", "born_in", "usa", 'affirmative.com'))
-        claims.append(Claim('obama', 'profession', 'president', 'usa.com'))
-        claims.append(Claim('obama', 'profession', 'lawyer', 'usa.com'))
+
+    # def test_truth(self):
+    #     # claims = RandomData.generate()
+    #     triples = list()
+    #     triples.append(Triple("obama", "born_in", "kenya", 'fake.com'))
+    #     triples.append(Triple('obama', 'born_in', 'kenya', 'official.com'))
+    #     triples.append(Triple("obama", "born_in", "usa", 'true.com'))
+    #     triples.append(Triple("obama", "born_in", "indonesia", 'xyz.com'))
+    #     triples.append(Triple("obama", "born_in", "usa", 'affirmative.com'))
+    #     triples.append(Triple('obama', 'profession', 'president', 'usa.com'))
+    #     triples.append(Triple('obama', 'profession', 'lawyer', 'usa.com'))
+    #     truth_finder = TruthFinder()
+    #     truth_finder.fit(triples)
+
+    def test_index(self):
+        triples = list()
+        triples.append(Triple("obama", "born_in", "kenya", 'fake.com'))
+        triples.append(Triple('obama', 'born_in', 'kenya', 'official.com'))
+        triples.append(Triple("obama", "born_in", "usa", 'true.com'))
+        triples.append(Triple("obama", "born_in", "indonesia", 'xyz.com'))
+        triples.append(Triple("obama", "born_in", "usa", 'affirmative.com'))
+        triples.append(Triple('obama', 'profession', 'president', 'usa.com'))
+        triples.append(Triple('obama', 'profession', 'lawyer', 'usa.com'))
         truth_finder = TruthFinder()
-        truth_finder.fit(claims)
-        assert truth_finder.claim[0][1] == 'usa'
-        assert truth_finder.src[0][1] == 'true.com'
+        truth_finder.fit(triples)
+        # truth_finder
+
 

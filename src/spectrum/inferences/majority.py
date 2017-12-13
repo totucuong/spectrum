@@ -1,6 +1,6 @@
 import collections
 
-from spectrum.models.claim import Claim
+from spectrum.models.triple import Triple
 from spectrum.inferences.judge import Judge
 
 class MajorityVote(Judge):
@@ -23,9 +23,9 @@ class MajorityVote(Judge):
         super().__init__()
 
 
-    def fit(self, claims):
+    def fit(self, triples):
         # index claims
-        for c in claims:
+        for c in triples:
             self.claims[c.subject + '|' + c.predicate].append(c)
 
         # resolve claims
@@ -36,7 +36,7 @@ class MajorityVote(Judge):
                 count[c.object] = count[c.object] + 1
                 invert[c.object].append(c)
             true_v = max(count, key=count.get)
-            self.resolved_claims[sp].extend(invert[true_v])
+            self.resolved_triples[sp].extend(invert[true_v])
 
         fitted = True
 
