@@ -2,7 +2,7 @@ import pandas as pd
 from zipfile import ZipFile
 import ntpath
 
-from spectrum.models.claim import Claim
+from spectrum.models.triple import Triple
 from spectrum.datasets.dataset import DataSet
 
 

@@ -1,4 +1,4 @@
-from spectrum.models.claim import Claim
+from spectrum.models.triple import Triple
 
 class RandomData:
     """
@@ -10,11 +10,11 @@ class RandomData:
         """
         This method generate randomly a list of claims
         :return: a list of claims
-        :rtype: Claim
+        :rtype: Triple
         """
         claims = list()
-        claims.append(Claim("obama", "born_in", "kenya", 'fake.com'))
-        claims.append(Claim("obama", "born_in", "usa", 'true.com'))
-        claims.append(Claim("obama", "born_in", "indonesia", 'xyz.com'))
-        claims.append(Claim("obama", "born_in", "usa", 'affirmative.com'))
+        claims.append(Triple("obama", "born_in", "kenya", 'fake.com'))
+        claims.append(Triple("obama", "born_in", "usa", 'true.com'))
+        claims.append(Triple("obama", "born_in", "indonesia", 'xyz.com'))
+        claims.append(Triple("obama", "born_in", "usa", 'affirmative.com'))
         return claims

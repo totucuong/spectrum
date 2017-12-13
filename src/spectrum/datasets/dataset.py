@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from spectrum.models.claim import Claim
+from spectrum.models.triple import Triple
 
 class DataSet:
 
@@ -45,17 +45,17 @@ class DataSet:
         if type == 'table':
             predicate = pred_key
             if src_key is None:
-                facts = [Claim(r[sub_key], predicate, r[pred_key]) for r in records]
+                facts = [Triple(r[sub_key], predicate, r[pred_key]) for r in records]
             else:
                 # with source info
-                facts = [Claim(r[sub_key], predicate, r[pred_key], r[src_key]) for r in records]
+                facts = [Triple(r[sub_key], predicate, r[pred_key], r[src_key]) for r in records]
         else:
             if (src_key is None) and (conf_key is None) :
-                facts = [Claim(r[sub_key], r[pred_key], r[obj_key]) for r in records]
+                facts = [Triple(r[sub_key], r[pred_key], r[obj_key]) for r in records]
             elif conf_key is None:
-                facts = [Claim(r[sub_key], r[pred_key], r[obj_key], r[src_key]) for r in records]
+                facts = [Triple(r[sub_key], r[pred_key], r[obj_key], r[src_key]) for r in records]
             else:
-                facts = [Claim(r[sub_key], r[pred_key], r[obj_key], r[src_key], r[conf_key]) for r in records]
+                facts = [Triple(r[sub_key], r[pred_key], r[obj_key], r[src_key], r[conf_key]) for r in records]
 
 
         return facts
@@ -121,5 +121,5 @@ class DefaultDataSet(DataSet):
         with open(file_path, 'r') as f:
             for l in f:
                 fields = l.split(',')
-                facts.append(Claim(*fields))
+                facts.append(Triple(*fields))
         return facts
