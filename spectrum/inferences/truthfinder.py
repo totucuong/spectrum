@@ -77,7 +77,6 @@ class TruthFinder(Judge):
             s.append(s_i)
         return s
 
-
     def impl(self, value1, value2):
         """
         implication function of (value1 -> value2)
@@ -87,7 +86,6 @@ class TruthFinder(Judge):
         We assume now value1 and value2 are strings.
         """
         return np.exp(-sdis.edit_distance(value1,value2)) - self.base_sim
-
 
     def __compute_trust(self):
         """
@@ -113,7 +111,6 @@ class TruthFinder(Judge):
         tau = -np.log(1 - t)
         return tau
 
-
     def get_correct_triples(self):
         """
         Returns
@@ -132,11 +129,6 @@ class TruthFinder(Judge):
     @property
     def sourcetrust(self):
         return self.tau
-
-
-
-
-
 
 def main():
     from spectrum.models.triple import Triple
