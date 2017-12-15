@@ -18,15 +18,52 @@ class MultiTruth(Judge):
         self.entity_to_marginal = [np.array([]) for i in range(self.nentities)]
         self.entity_to_likelihood = [np.array([]) for i in range(self.nentities)]
 
+        # source accuracy
+        self.accuracy = np.ones(self.nsources)
+
         self.__compute_prior()
-        # self.__compute_source_accuracy()
+        self.__compute_source_accuracy()
         # self.__compute_likelihood()
         # self.__compute_marginal_likelihood()
         # self.__compute_posterior()
         # self.__compute_truth()
 
     def __compute_source_accuracy(self):
-        pass
+        """
+        Compute the accuracy of each source: A(p) = sum(conf)/len(conf), where conf is the confidence vector
+        of all triples provided by the source p.
+        """
+        for s in range(self.nsources):
+            conf_vec = self.get_confidence(s)
+            self.accuracy[s] = np.average(conf_vec)
+
+    def get_confidence(self, source):
+        """
+        Get the confidences of all triples provided by a source
+
+        Parameters
+        ----------
+        source: a source or a source index
+
+        Returns
+        -------
+        a np.array of confidences
+        """
+        if isinstance(source, int):
+            src_idx = source
+        else:
+            src_idx = self.sourceidx[source]
+        result = np.array([])
+        for e in range(self.nentities):
+            src_indices = self.entity_to_srcs[e]
+            src_mask = src_indices == src_idx
+            conf_vec = self.entity_to_confs[e][src_mask]
+            if (len(conf_vec) != 0):
+                result = np.concatenate((result, conf_vec))
+        return result
+
+
+
 
     def __compute_prior(self):
         """

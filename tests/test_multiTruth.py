@@ -1,6 +1,7 @@
 from unittest import TestCase
 from spectrum.models.triple import Triple
 from spectrum.inferences.multitruth import MultiTruth
+import numpy as np
 
 class TestMultiTruth(TestCase):
 
@@ -42,3 +43,16 @@ class TestMultiTruth(TestCase):
         prior = mt.get_prior(Triple('alice','works_for','ibm'))
         self.assertAlmostEqual(prior, 0.25)
 
+    def test_get_confidence(self):
+        mt = MultiTruth()
+        triples = list()
+        triples.append(Triple("alice", "works_for", "ibm", 'fake.com', 0.3))
+        triples.append(Triple('alice', 'works_for', 'ibm', 'official.com', 0.2))
+        triples.append(Triple("alice", "works_for", "cisco", 'fake.com', 0.3))
+        triples.append(Triple("alex", "works_for", "oracle", 'affirmative.com', 0.4))
+        triples.append(Triple("alex", "works_for", "uber", 'affirmative.com', 0.3))
+        triples.append(Triple("bobs", "works_for", "cisco", 'affirmative.com', 0.8))
+        triples.append(Triple("bobs", "works_for", "cisco", 'alternative.com', 0.2))
+        mt.fit(triples)
+        self.assertTrue(np.all(mt.get_confidence('affirmative.com') == np.array([0.4, 0.3,0.8])))
+        self.assertTrue(np.all(mt.get_confidence('fake.com') == np.array([0.3, 0.3])))

@@ -55,6 +55,9 @@ class Judge:
     def get_claims(self, entity):
         return self.entity_to_facts[self.get_entity_index(entity)]
 
+    def get_src_idx(self, source):
+        return self.sourceidx[source]
+
     @property
     def nentities(self):
         return len(self.entity)
