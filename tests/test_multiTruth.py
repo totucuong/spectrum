@@ -56,3 +56,12 @@ class TestMultiTruth(TestCase):
         mt.fit(triples)
         self.assertTrue(np.all(mt.get_confidence('affirmative.com') == np.array([0.4, 0.3,0.8])))
         self.assertTrue(np.all(mt.get_confidence('fake.com') == np.array([0.3, 0.3])))
+
+    def test_nchoosk_subset(self):
+        mt = MultiTruth()
+        comb = []
+        for c in mt.nchoosek_subset(4, 2):
+            comb.append(np.array(c))
+        print(comb[5])
+        self.assertTrue(np.all(np.array([0, 0, 1, 1]) == comb[5]))
+        self.assertTrue(np.all(np.array([1,1,0,0]) == comb[0]))
