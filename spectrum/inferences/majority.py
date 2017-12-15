@@ -21,6 +21,9 @@ class MajorityVote(Judge):
     #     self.__resolve()
     def __init__(self):
         super().__init__()
+        self.claims = collections.defaultdict(lambda: list())
+        self.resolved_triples = collections.defaultdict(lambda: list())
+
 
 
     def fit(self, triples):
@@ -40,3 +43,6 @@ class MajorityVote(Judge):
 
         fitted = True
 
+    @property
+    def truths(self):
+        return self.resolved_triples
