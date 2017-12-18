@@ -29,8 +29,7 @@ class MultiTruth(Judge):
         self.__compute_prior()
         self.__compute_source_accuracy()
         self.__compute_marginal_likelihood()
-
-        # self.__compute_likelihood()
+        self.__compute_conditional_likelihood()
         # self.__compute_posterior()
         # self.__compute_truth()
 
@@ -97,12 +96,32 @@ class MultiTruth(Judge):
             eidx = self.entityidx[entity]
         return self.entity_to_marginal[eidx]
 
+    def get_likelihood(self, entity, fact):
+        """
+        Parameters
+        ----------
+        entity: an entity or its index
+        fact: a fact
+
+        Returns
+        -------
+        P(De|fact)
+        """
+        if isinstance(entity, int):
+            eidx = entity
+        else:
+            eidx = self.entityidx[entity]
+
+        fidx = np.where(self.entity_to_facts[eidx] == fact)[0][0]
+
+        return self.entity_to_likelihood[eidx][fidx]
+
     def __compute_prior(self):
         """
-        Compute prior of triples p(t). This prior is computed by average the confidence of all triples t that share
+        Compute prior of triples P(t). This prior is computed by average the confidence of all triples t that share
         the same t.fact, i.e., (subject,predicate,object)
         """
-        print('computing prior P(t)...')
+        print('Computing prior P(t)...')
         for e in range(self.nentities):
             facts = self.entity_to_facts[e]
             fact_set = list(set(facts))
@@ -114,8 +133,47 @@ class MultiTruth(Judge):
             self.entity_to_prior[e] = prior
             print(self.entity[e], ' :', facts, self.entity_to_prior[e])
 
-    def __compute_likelihood(self):
-        pass
+    def __compute_conditional_likelihood(self):
+        """
+        Compute likelihood P(De|t) = [prod_over_rho_in_rho(t) of (A(rho)/k)] * P(De -{t}).
+
+        We call the first term of P(De|t) as correct term.
+
+        We call the second term of P(De|t) as reduced likelihood term.
+
+        The term P(De-{t}) can be computed in a procedure similar to compute_marginal except that
+        we need to select only k-1 triples every time instead of k, since t is already choosen to
+        be correct.
+        """
+        print('Computing conditional likelihood P(De|t)')
+        for e in range(self.nentities):
+            print("-" * 40)
+            print('Entity ', self.entity[e])
+            facts = self.entity_to_facts[e]
+            accuracy = self.accuracy[self.entity_to_srcs[e]]
+
+            # compute correct term
+            correct_term = np.zeros(len(facts))
+            for i in range(len(correct_term)):
+                #TODO: replace default degree with learnt degree
+                correct_term[i] = np.prod(accuracy[facts == facts[i]] / self.default_degree)
+
+            # compute reduced likelihood term
+            reduced_likelihood = np.zeros(len(facts))
+            for i in range(len(reduced_likelihood)):
+                # compute P(De - {t})
+                others = [facts[i] != other for other in facts]
+                reduced_facts = facts[others]
+                reduced_accuracy = accuracy[others]
+                print('reduced facts: ', reduced_facts)
+                print('reduced accuracy: ', reduced_accuracy)
+                # TODO: when reduced_facts is empty then what is the expectation? =1 ? yes
+                reduced_likelihood[i] = self.compute_expectation(reduced_facts, reduced_accuracy,
+                                                                 self.default_degree -1,
+                                                                 self.default_degree, self.nfalse)
+
+            self.entity_to_likelihood[e] = correct_term * reduced_likelihood
+
 
     def __compute_marginal_likelihood(self):
         """
@@ -124,68 +182,86 @@ class MultiTruth(Judge):
         """
         print('Computing marginal likelihood P(De)...')
         for e in range(self.nentities):
-            # TODO: for now we default degree = 1 (single truth assumption
-            #  self.entity_to_marginal[e] = self.compute_marginal(e, self.degree[self.entity[e].predicate])
-            self.entity_to_marginal[e] = self.compute_marginal(e, self.default_degree, self.nfalse)
+            # TODO: for now we default degree = 1 (single truth assumption)
+            facts = self.entity_to_facts[e]
+            accuracy = self.accuracy[self.entity_to_srcs[e]]
+            self.entity_to_marginal[e] = self.compute_expectation(facts, accuracy , self.default_degree, self.default_degree, self.nfalse)
 
-    def compute_marginal(self, entity, degree, nfalse):
+    def compute_expectation(self, facts, accuracy, ntrue, degree, nfalse):
         """
         Compute marginal likelihood P(De)
 
         Parameters
         ----------
-        entity: the entity. It can be a string, e.g., 'obama|born_in' or an index.
+        facts: a list of facts
+        accuracy: a list of source accuracy
+        ntrue:  number of true facts within this list of facts
         degree: the degree of the predicate of the entity, e.g., degree of 'born_in'
         nfalse: the number of false values in the underlying domain of the predicate.
 
         Returns
         -------
-        the marginal likelihood
+        the expectation of P(facts)
         """
-        if isinstance(entity, int):
-            e = entity
-        else:
-            e = self.entityidx[entity]
+        # if isinstance(entity, int):
+        #     e = entity
+        # else:
+        #     e = self.entityidx[entity]
 
-        # De
-        facts = self.entity_to_facts[e]
+        # # De
+        # facts = self.entity_to_facts[e]
+        if len(facts) == 0:
+            return 1
 
         # set(De)
         fact_set = np.unique(facts)
 
         # source accuracies
-        accuracy = self.accuracy[self.entity_to_srcs[e]]
+        # accuracy = self.accuracy[self.entity_to_srcs[e]]
         # print('source accuracy: ', accuracy)
 
         # marginal likelihood P(De)
         marginal = 0
-        for mask in self.nchoosek_subset(len(fact_set), degree):
+        for mask in self.nchoosek_subset(len(fact_set), ntrue):
             fact_set_mask = np.array(mask) == 1
             selected_facts = fact_set[fact_set_mask]
             facts_mask = np.array([False] * len(facts))
             for i in range(len(facts)):
                 if facts[i] in selected_facts:
                     facts_mask[i] = True
-            marginal = marginal + self.compute_marginal_part(accuracy, facts_mask, degree, nfalse)
+            marginal = marginal + self.compute_likelihood(accuracy, facts_mask, degree, nfalse)
         return marginal
 
-    def compute_marginal_part(self, accuracy, mask, degree, nfalse):
+    def compute_likelihood(self, accuracy, mask, pred_degree, nfalse):
         """
-        Compute conditional marginal likelihood P(De|T)
+         Compute the likelihood of one scenario.
+
+        A scenario is when given a list of facts. And we know which facts are correct, given by mask.
+        We want to compute the probability of this scenario.
+
+        Example:
+            accuracy = [0.3, 0.4, 0.8]
+            mask = [True, False, False]
+            pred_degree = 2
+            nfalse = 10
+            The probability of this scenario is (0.3/2) * (1-0.4)/10 * (1 - 0.8)/10
 
         Parameters
         ----------
         accuracy: a list of source accuracy
         mask: a boolean np.array to determine which source provides true triple/false triple
         nfalse: the number false values in the underlying domain of predicate
-        degree: the degree of the predicate
+        pred_degree: the degree of the predicate
 
         Returns
         -------
         conditional marginal likelihood
         """
+        print('mask :', mask)
+        print('accuracy:', accuracy)
+        #TODO: mask length is zero causing exception
         marginal_part = np.zeros(len(accuracy))
-        marginal_part[mask] = accuracy[mask] / degree
+        marginal_part[mask] = accuracy[mask] / pred_degree
         # print('true fact - marginal part: ', marginal_part)
         marginal_part[~mask] = (1 - accuracy[~mask]) / nfalse
         # print('false fact - marginal part: ', marginal_part)

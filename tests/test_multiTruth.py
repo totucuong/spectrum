@@ -72,11 +72,11 @@ class TestMultiTruth(TestCase):
         nfalse = 5
         accuracy = np.array([0.4, 0.2, 0.6, 0.8])
         mask = np.array([True, False, False, True])
-        marginal_part = mt.compute_marginal_part(accuracy, mask, degree, nfalse)
+        marginal_part = mt.compute_likelihood(accuracy, mask, degree, nfalse)
         print(marginal_part)
         self.assertAlmostEqual(marginal_part, 0.001024)
 
-    def test_compute_marginal(self):
+    def test_compute_expectation(self):
         mt = MultiTruth()
         triples = list()
         triples.append(Triple("alice", "works_for", "ibm", 'fake.com', 0.3))
@@ -87,7 +87,10 @@ class TestMultiTruth(TestCase):
         triples.append(Triple("bobs", "works_for", "cisco", 'affirmative.com', 0.8))
         triples.append(Triple("bobs", "works_for", "cisco", 'alternative.com', 0.2))
         mt.fit(triples)
-        marginal = mt.compute_marginal('alice|works_for', 1, 10)
+        e = mt.entityidx['alice|works_for']
+        facts = mt.entity_to_facts[e]
+        accuracy = mt.accuracy[mt.entity_to_srcs[e]]
+        marginal = mt.compute_expectation(facts, accuracy, 1, 1, 10)
         self.assertAlmostEqual(marginal,0.00588)
 
     def test_get_marginal_likelihood(self):
@@ -102,4 +105,22 @@ class TestMultiTruth(TestCase):
         triples.append(Triple("bobs", "works_for", "cisco", 'alternative.com', 0.2))
         mt.fit(triples)
         self.assertAlmostEqual(mt.get_marginal_likelihood('alice|works_for'), 0.00588)
+
+
+    def test_compute_reduced_facts_likelihood(self):
+        mt = MultiTruth()
+        triples = list()
+        triples.append(Triple("alice", "works_for", "ibm", 'fake.com', 0.3))
+        triples.append(Triple('alice', 'works_for', 'ibm', 'official.com', 0.2))
+        triples.append(Triple("alice", "works_for", "cisco", 'fake.com', 0.3))
+        triples.append(Triple("alex", "works_for", "oracle", 'affirmative.com', 0.4))
+        triples.append(Triple("alex", "works_for", "uber", 'affirmative.com', 0.3))
+        triples.append(Triple("bobs", "works_for", "cisco", 'affirmative.com', 0.8))
+        triples.append(Triple("bobs", "works_for", "cisco", 'alternative.com', 0.2))
+        mt.fit(triples)
+        print('source: ', mt.source[mt.entity_to_srcs[mt.entityidx['alice|works_for']]])
+        print('accuracy: ', mt.accuracy[mt.entity_to_srcs[mt.entityidx['alice|works_for']]])
+        print('facts: ', mt.entity_to_facts[mt.entityidx['alice|works_for']])
+        #note that we have set default_degree = 1, defaul nfalse = 10
+        self.assertAlmostEqual(mt.get_likelihood('alice|works_for', 'ibm'), 0.0042)
 
