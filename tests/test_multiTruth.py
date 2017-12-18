@@ -65,3 +65,13 @@ class TestMultiTruth(TestCase):
         print(comb[5])
         self.assertTrue(np.all(np.array([0, 0, 1, 1]) == comb[5]))
         self.assertTrue(np.all(np.array([1,1,0,0]) == comb[0]))
+
+    def test_compute_marginall_part(self):
+        mt = MultiTruth()
+        degree = 2
+        nfalse = 5
+        accuracy = np.array([0.4, 0.2, 0.6, 0.8])
+        mask = np.array([True, False, False, True])
+        marginal_part = mt.compute_marginal_part(accuracy, mask, nfalse, degree)
+        print(marginal_part)
+        self.assertAlmostEqual(marginal_part, 0.001024)

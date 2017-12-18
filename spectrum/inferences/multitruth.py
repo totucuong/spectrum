@@ -23,7 +23,7 @@ class MultiTruth(Judge):
         self.entity_to_prior = [np.array([]) for i in range(self.nentities)]
         self.entity_to_marginal = np.zeros(self.nentities)
         self.entity_to_likelihood = [np.array([]) for i in range(self.nentities)]
-
+        
         # source accuracy
         self.accuracy = np.ones(self.nsources)
         self.__compute_prior()
@@ -103,8 +103,9 @@ class MultiTruth(Judge):
             # source accuracies
             accuracy = self.entity_to_srcs[e]
 
-            #TODO: define self.degree and self.predicate
-            self.entity_to_marginal[e] = self.compute_marginal(e, self.degree[self.predicate[e]])
+            # TODO: for now we default degree = 1 (single truth assumption
+            #  self.entity_to_marginal[e] = self.compute_marginal(e, self.degree[self.entity[e].predicate])
+            self.entity_to_marginal[e] = self.compute_marginal(e, self.default_degree)
 
     def compute_marginal(self, entity, degree):
         """
@@ -146,9 +147,9 @@ class MultiTruth(Judge):
         conditional marginal likelihood
         """
         marginal_part = np.zeros(len(accuracy))
-        marginal_part[mask] = accuracy[mask]
+        marginal_part[mask] = accuracy[mask] / degree
         marginal_part[~mask] = (1 - accuracy[~mask]) / nfalse
-        return marginal_part
+        return np.prod(marginal_part)
 
     def __compute_posterior(self):
         pass
