@@ -90,3 +90,16 @@ class TestMultiTruth(TestCase):
         marginal = mt.compute_marginal('alice|works_for', 1, 10)
         self.assertAlmostEqual(marginal,0.00588)
 
+    def test_get_marginal_likelihood(self):
+        mt = MultiTruth()
+        triples = list()
+        triples.append(Triple("alice", "works_for", "ibm", 'fake.com', 0.3))
+        triples.append(Triple('alice', 'works_for', 'ibm', 'official.com', 0.2))
+        triples.append(Triple("alice", "works_for", "cisco", 'fake.com', 0.3))
+        triples.append(Triple("alex", "works_for", "oracle", 'affirmative.com', 0.4))
+        triples.append(Triple("alex", "works_for", "uber", 'affirmative.com', 0.3))
+        triples.append(Triple("bobs", "works_for", "cisco", 'affirmative.com', 0.8))
+        triples.append(Triple("bobs", "works_for", "cisco", 'alternative.com', 0.2))
+        mt.fit(triples)
+        self.assertAlmostEqual(mt.get_marginal_likelihood('alice|works_for'), 0.00588)
+

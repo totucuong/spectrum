@@ -28,8 +28,9 @@ class MultiTruth(Judge):
         self.accuracy = np.ones(self.nsources)
         self.__compute_prior()
         self.__compute_source_accuracy()
+        self.__compute_marginal_likelihood()
+
         # self.__compute_likelihood()
-        # self.__compute_marginal_likelihood()
         # self.__compute_posterior()
         # self.__compute_truth()
 
@@ -81,6 +82,20 @@ class MultiTruth(Judge):
             src_idx = self.sourceidx[source]
         return self.accuracy[src_idx]
 
+    def get_marginal_likelihood(self, entity):
+        """
+        Get the marginal likelihood P(De) of an entity. De is the set of triples that share the same
+        entity=(subject,predicate)
+
+        Parameters
+        ----------
+        entity: an entity index or its string representation, e.g., 'obama|born_in'
+        """
+        if isinstance(entity, int):
+            eidx = entity
+        else:
+            eidx = self.entityidx[entity]
+        return self.entity_to_marginal[eidx]
 
     def __compute_prior(self):
         """
@@ -102,25 +117,16 @@ class MultiTruth(Judge):
     def __compute_likelihood(self):
         pass
 
-    # def __compute_marginal_likelihood(self):
-    #     """
-    #     Compute marginal likelihood P(De), where De is the list of triples about entity e=(subject,predicate)
-    #     print('computing marginal likelihood
-    #     """
-    #     print('computing marginal likelihood P(De)...')
-    #     for e in range(self.nentities):
-    #         # De
-    #         facts = self.entity_to_facts[e]
-    #
-    #         # set(De)
-    #         fact_set = list(set(facts))
-    #
-    #         # source accuracies
-    #         accuracy = self.entity_to_srcs[e]
-    #
-    #         # TODO: for now we default degree = 1 (single truth assumption
-    #         #  self.entity_to_marginal[e] = self.compute_marginal(e, self.degree[self.entity[e].predicate])
-    #         self.entity_to_marginal[e] = self.compute_marginal(e, self.default_degree, self.nfalse)
+    def __compute_marginal_likelihood(self):
+        """
+        Compute marginal likelihood P(De), where De is the list of triples about entity e=(subject,predicate)
+        print('computing marginal likelihood
+        """
+        print('Computing marginal likelihood P(De)...')
+        for e in range(self.nentities):
+            # TODO: for now we default degree = 1 (single truth assumption
+            #  self.entity_to_marginal[e] = self.compute_marginal(e, self.degree[self.entity[e].predicate])
+            self.entity_to_marginal[e] = self.compute_marginal(e, self.default_degree, self.nfalse)
 
     def compute_marginal(self, entity, degree, nfalse):
         """
@@ -149,7 +155,7 @@ class MultiTruth(Judge):
 
         # source accuracies
         accuracy = self.accuracy[self.entity_to_srcs[e]]
-        print('source accuracy: ', accuracy)
+        # print('source accuracy: ', accuracy)
 
         # marginal likelihood P(De)
         marginal = 0
