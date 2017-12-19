@@ -56,16 +56,16 @@ class TruthFinder(Judge):
         s = []
         for i in range(self.nentities):
             # a set of claims (facts) about an entity i
-            claim_set = list(set(self.entity_to_claims[i]))
+            claim_set = list(set(self.entity_to_facts[i]))
             # confidence score of each claim
             sigma_i = np.zeros(len(claim_set))
             for j in range(len(claim_set)):
                 srcs = self.entity_to_srcs[i]
-                agree_srs = srcs[claim_set[j] == self.entity_to_claims[i]]
+                agree_srs = srcs[claim_set[j] == self.entity_to_facts[i]]
                 sigma_i[j] = sum(self.tau[agree_srs])
 
             # compute adjusted confidence score
-            s_i = np.zeros(len(self.entity_to_claims[i]))
+            s_i = np.zeros(len(self.entity_to_facts[i]))
             adj_sigma_i = np.copy(sigma_i)
             for j in range(len(claim_set)):
                 implication = np.array([self.impl(claim_set[j], c) for c in claim_set])
@@ -73,10 +73,9 @@ class TruthFinder(Judge):
                            self.rho * sum(sigma_i * implication)
 
                 # compute confidence of claims about entity i
-                s_i[self.entity_to_claims[i] == claim_set[j]] = 1/(1 + np.exp(-self.gamma*adj_sigma_i[j]))
+                s_i[self.entity_to_facts[i] == claim_set[j]] = 1 / (1 + np.exp(-self.gamma * adj_sigma_i[j]))
             s.append(s_i)
         return s
-
 
     def impl(self, value1, value2):
         """
@@ -87,7 +86,6 @@ class TruthFinder(Judge):
         We assume now value1 and value2 are strings.
         """
         return np.exp(-sdis.edit_distance(value1,value2)) - self.base_sim
-
 
     def __compute_trust(self):
         """
@@ -113,7 +111,6 @@ class TruthFinder(Judge):
         tau = -np.log(1 - t)
         return tau
 
-
     def get_correct_triples(self):
         """
         Returns
@@ -122,8 +119,8 @@ class TruthFinder(Judge):
         """
         correct_triples = list()
         for e in range(self.nentities):
-            true_claim = self.entity_to_claims[e][np.argmax(self.s[e])]
-            sidxs = self.entity_to_srcs[e][true_claim == self.entity_to_claims[e]]
+            true_claim = self.entity_to_facts[e][np.argmax(self.s[e])]
+            sidxs = self.entity_to_srcs[e][true_claim == self.entity_to_facts[e]]
             sources = self.source[sidxs]
             splits = self.entity[e].split('|')
             correct_triples.append(Triple(splits[0], splits[1],true_claim, sources, np.max(self.s[e])))
@@ -132,11 +129,6 @@ class TruthFinder(Judge):
     @property
     def sourcetrust(self):
         return self.tau
-
-
-
-
-
 
 def main():
     from spectrum.models.triple import Triple

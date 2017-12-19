@@ -10,13 +10,13 @@ class Triple:
             self.__predicate = args[1]
             self.__object = args[2]
             self.__source = ''
-            self.confidence = 0.0
+            self.__confidence = 0.9
         elif len(args) == 4:
             self.__subject = args[0]
             self.__predicate = args[1]
             self.__object = args[2]
             self.__source = args[3]
-            self.__confidence = 0.0
+            self.__confidence = 0.9
         elif len(args) == 5:
             self.__subject = args[0]
             self.__predicate = args[1]
