@@ -62,7 +62,6 @@ class TestMultiTruth(TestCase):
         comb = []
         for c in mt.nchoosek_subset(4, 2):
             comb.append(np.array(c))
-        print(comb[5])
         self.assertTrue(np.all(np.array([0, 0, 1, 1]) == comb[5]))
         self.assertTrue(np.all(np.array([1,1,0,0]) == comb[0]))
 
@@ -72,8 +71,7 @@ class TestMultiTruth(TestCase):
         nfalse = 5
         accuracy = np.array([0.4, 0.2, 0.6, 0.8])
         mask = np.array([True, False, False, True])
-        marginal_part = mt.compute_likelihood(accuracy, mask, degree, nfalse)
-        print(marginal_part)
+        marginal_part = mt.compute_scenario_likelihood(accuracy, mask, degree, nfalse)
         self.assertAlmostEqual(marginal_part, 0.001024)
 
     def test_compute_expectation(self):
@@ -118,9 +116,26 @@ class TestMultiTruth(TestCase):
         triples.append(Triple("bobs", "works_for", "cisco", 'affirmative.com', 0.8))
         triples.append(Triple("bobs", "works_for", "cisco", 'alternative.com', 0.2))
         mt.fit(triples)
-        print('source: ', mt.source[mt.entity_to_srcs[mt.entityidx['alice|works_for']]])
-        print('accuracy: ', mt.accuracy[mt.entity_to_srcs[mt.entityidx['alice|works_for']]])
-        print('facts: ', mt.entity_to_facts[mt.entityidx['alice|works_for']])
         #note that we have set default_degree = 1, defaul nfalse = 10
         self.assertAlmostEqual(mt.get_likelihood('alice|works_for', 'ibm'), 0.0042)
 
+    def test_compute_mutlitruth(self):
+        mt = MultiTruth()
+        triples = list()
+        triples.append(Triple("alice", "works_for", "ibm", 'fake.com', 0.3))
+        triples.append(Triple('alice', 'works_for', 'ibm', 'official.com', 0.2))
+        triples.append(Triple("alice", "works_for", "cisco", 'fake.com', 0.3))
+        triples.append(Triple("alex", "works_for", "oracle", 'affirmative.com', 0.4))
+        triples.append(Triple("alex", "works_for", "uber", 'affirmative.com', 0.3))
+        triples.append(Triple("bobs", "works_for", "cisco", 'affirmative.com', 0.8))
+        triples.append(Triple("bobs", "works_for", "cisco", 'alternative.com', 0.2))
+        mt.fit(triples)
+        print('prior alice|works_for: ', mt.get_prior_of_entity('alice|works_for'))
+        print('likelihood alice|works_for: ', mt.get_likelihood_of_entity('alice|works_for'))
+        print('marginal likelihood alice|works_for', mt.get_marginal_likelihood('alice|works_for'))
+        posterior = mt.get_posterior('alice|works_for')
+        expected = np.array([ 0.17857143,  0.17857143,  0.08571429])
+        self.assertEqual(len(posterior), 3)
+        self.assertAlmostEqual(posterior[0], expected[0])
+        self.assertAlmostEqual(posterior[1], expected[1])
+        self.assertAlmostEqual(posterior[2], expected[2])
