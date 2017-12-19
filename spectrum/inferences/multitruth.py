@@ -19,14 +19,22 @@ class MultiTruth(Judge):
 
     def fit(self, triples):
         super().index(triples)
+
+        # degree of predicates
+        self.degree = list()
+        self.entity_to_predicate = np.ones(self.nentities, dtype=int)
+        for e in range(self.nentities):
+            self.entity_to_predicate[e] = self.predicateidx[self.entity[e].split('|')[1]]
+
         # probabilities
         self.entity_to_prior = [np.array([]) for i in range(self.nentities)]
         self.entity_to_marginal = np.zeros(self.nentities)
         self.entity_to_likelihood = [np.array([]) for i in range(self.nentities)]
         self.entity_to_posterior = [np.array([]) for i in range(self.nentities)]
-        
+
         # source accuracy
         self.accuracy = np.ones(self.nsources)
+        self.__estimate_degree_of_predicate()
         self.__compute_prior()
         self.__compute_source_accuracy()
         self.__compute_marginal_likelihood()
@@ -243,6 +251,23 @@ class MultiTruth(Judge):
             eidx = self.entityidx[entity]
         return self.entity_to_posterior[eidx]
 
+    def get_degree(self, predicate):
+        """
+        Get degree of a predicate
+
+        Parameters
+        ----------
+        predicate: a predicate or its index
+
+        Returns
+        -------
+        degree of the predicate
+        """
+        if isinstance(predicate, int):
+            predidx = predicate
+        else:
+            predidx = self.predicateidx[predicate]
+        return self.degree[predidx]
 
     def nchoosek_subset(self, n, k):
         """
@@ -262,6 +287,16 @@ class MultiTruth(Judge):
                 yield leftlist + [0]
             for leftlist in self.nchoosek_subset(n - 1, k - 1):
                 yield leftlist + [1]
+
+    def __estimate_degree_of_predicate(self):
+        """
+        Estimate the degree of predicates
+        """
+        # for entity in self.entity:
+        #     self.degree.append(self.)
+        self.degree = np.ones(len(self.predicate))
+
+
 
     def __compute_source_accuracy(self):
         """
@@ -304,12 +339,13 @@ class MultiTruth(Judge):
         for e in range(self.nentities):
             facts = self.entity_to_facts[e]
             accuracy = self.accuracy[self.entity_to_srcs[e]]
+            degree = self.degree[self.entity_to_predicate[e]]
 
             # compute correct term
             correct_term = np.zeros(len(facts))
             for i in range(len(correct_term)):
-                #TODO: replace default degree with learnt degree
-                correct_term[i] = np.prod(accuracy[facts == facts[i]] / self.default_degree)
+                correct_term[i] = np.prod(accuracy[facts == facts[i]] / degree)
+
 
             # compute reduced likelihood term
             reduced_likelihood = np.zeros(len(facts))
@@ -318,10 +354,9 @@ class MultiTruth(Judge):
                 others = [facts[i] != other for other in facts]
                 reduced_facts = facts[others]
                 reduced_accuracy = accuracy[others]
-                # TODO: when reduced_facts is empty then what is the expectation? =1 ? yes
                 reduced_likelihood[i] = self.compute_expectation(reduced_facts, reduced_accuracy,
-                                                                 self.default_degree -1,
-                                                                 self.default_degree, self.nfalse)
+                                                                 degree -1,
+                                                                 degree, self.nfalse)
             self.entity_to_likelihood[e] = correct_term * reduced_likelihood
 
     def __compute_marginal_likelihood(self):
@@ -330,11 +365,11 @@ class MultiTruth(Judge):
         """
         print('Computing marginal likelihood P(De)...')
         for e in range(self.nentities):
-            # TODO: for now we default degree = 1 (single truth assumption)
             facts = self.entity_to_facts[e]
             accuracy = self.accuracy[self.entity_to_srcs[e]]
-            self.entity_to_marginal[e] = self.compute_expectation(facts, accuracy , self.default_degree,
-                                                                  self.default_degree, self.nfalse)
+            degree = self.degree[self.entity_to_predicate[e]]
+            self.entity_to_marginal[e] = self.compute_expectation(facts, accuracy , degree,
+                                                                  degree, self.nfalse)
     def __compute_posterior(self):
         """
         Compute posterior probability P(t|De) = P(De|t)P(t)/P(De)

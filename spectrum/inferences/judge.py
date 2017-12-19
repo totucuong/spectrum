@@ -15,6 +15,8 @@ class Judge:
         self.entityidx = collections.defaultdict(lambda: 0)
         self.source = []
         self.sourceidx = collections.defaultdict(lambda: 0)
+        self.predicate = []
+        self.predicateidx = collections.defaultdict(lambda: 0)
 
     def fit(self, triples):
         self.index(triples)
@@ -22,6 +24,7 @@ class Judge:
     def index(self, triples):
         seen_sources = set()
         seen_entities = set()
+        seen_predicates = set()
         for c in triples:
             if c.source not in seen_sources:
                 seen_sources.add(c.source)
@@ -32,6 +35,11 @@ class Judge:
                 seen_entities.add(c.entity)
                 self.entity.append(c.entity)
                 self.entityidx[c.entity] = len(self.entity) - 1
+
+            if c.predicate not in seen_predicates:
+                seen_predicates.add(c.predicate)
+                self.predicate.append(c.predicate)
+                self.predicateidx[c.predicate] = len(self.predicate) - 1
 
         n = len(seen_entities)
         self.entity_to_facts = [list() for i in range(n)]
@@ -48,6 +56,7 @@ class Judge:
             self.entity_to_srcs[i] = np.array(self.entity_to_srcs[i])
             self.entity_to_confs[i] = np.array(self.entity_to_confs[i])
         self.source = np.array(self.source)
+        self.predicate = np.array(self.predicate)
 
     def get_entity_index(self, entity):
         return self.entityidx[entity]
@@ -65,4 +74,8 @@ class Judge:
     @property
     def nsources(self):
         return len(self.source)
+
+    @property
+    def npredicates(self):
+        return len(self.predicate)
 
