@@ -25,6 +25,8 @@ class MultiTruth(Judge):
         self.entity_to_predicate = np.ones(self.nentities, dtype=int)
         for e in range(self.nentities):
             self.entity_to_predicate[e] = self.predicateidx[self.entity[e].split('|')[1]]
+        self.predicate_to_degree_vec = [list() for i in range(self.npredicates)]
+        self.__compute_degree_vec()
 
         # probabilities
         self.entity_to_prior = [np.array([]) for i in range(self.nentities)]
@@ -66,14 +68,19 @@ class MultiTruth(Judge):
 
         # marginal likelihood P(De)
         marginal = 0
-        for mask in self.nchoosek_subset(len(fact_set), ntrue):
-            fact_set_mask = np.array(mask) == 1
-            selected_facts = fact_set[fact_set_mask]
-            facts_mask = np.array([False] * len(facts))
-            for i in range(len(facts)):
-                if facts[i] in selected_facts:
-                    facts_mask[i] = True
-            marginal = marginal + self.compute_scenario_likelihood(accuracy, facts_mask, degree, nfalse)
+        if (len(fact_set) < ntrue):
+            # everything is considered to be true
+            facts_mask = np.array([True] * len(facts))
+            marginal = self.compute_scenario_likelihood(accuracy, facts_mask, degree, nfalse)
+        else:
+            for mask in self.nchoosek_subset(len(fact_set), ntrue):
+                fact_set_mask = np.array(mask) == 1
+                selected_facts = fact_set[fact_set_mask]
+                facts_mask = np.array([False] * len(facts))
+                for i in range(len(facts)):
+                    if facts[i] in selected_facts:
+                        facts_mask[i] = True
+                marginal = marginal + self.compute_scenario_likelihood(accuracy, facts_mask, degree, nfalse)
         return marginal
 
     def compute_scenario_likelihood(self, accuracy, mask, pred_degree, nfalse):
@@ -269,6 +276,24 @@ class MultiTruth(Judge):
             predidx = self.predicateidx[predicate]
         return self.degree[predidx]
 
+    def get_degree_vec(self, predicate):
+        """
+        Get degree vector of a predicate
+
+        Parameters
+        ----------
+        predicate: a predicate or its index
+
+        Returns
+        -------
+        the degree vector of the predicate, i.e, count of triples, each count is for one entity (subject,predicate)
+        """
+        if isinstance(predicate, int):
+            predidx = predicate
+        else:
+            predidx = self.predicateidx[predicate]
+        return self.predicate_to_degree_vec[predidx]
+
     def nchoosek_subset(self, n, k):
         """
         Generator of boolean vector of combination c(n,k): [0011] means pick the last 2 object from 4 objects.
@@ -278,6 +303,8 @@ class MultiTruth(Judge):
         0011 < 0101 < 0110 < 1001 < 1010 < 1100. From this we see that the vectors whose top bit is zero are listed
         first, then those with top bit equal to one. The vectors whose top bit is zero has bottom three bits whose density is two and the vectors whose top bit is one have bottom three bits whose density is one.
         """
+        if n < k:
+            raise ValueError("k must be at most n")
         if n == k:
             yield [1] * n
         elif k == 0:
@@ -288,15 +315,60 @@ class MultiTruth(Judge):
             for leftlist in self.nchoosek_subset(n - 1, k - 1):
                 yield leftlist + [1]
 
+    def __compute_degree_vec(self):
+        for e in range(self.nentities):
+            pidx = self.predicateidx[self.entity[e].split('|')[1]]
+            count = len(np.unique(self.entity_to_facts[e]))
+            self.predicate_to_degree_vec[pidx].append(count)
+
     def __estimate_degree_of_predicate(self):
         """
         Estimate the degree of predicates
         """
         # for entity in self.entity:
         #     self.degree.append(self.)
-        self.degree = np.ones(len(self.predicate))
+        for p in range(self.npredicates):
+            self.degree.append(self.__learn_degree(p))
 
+    def __learn_degree(self, pidx):
+        """
+        Estimate degree of a predicate
 
+        Parameters
+        ----------
+        pidx: index of a predicate
+
+        Returns
+        -------
+        degree of the predicate
+        """
+        deg_vec = self.__degree_vec(pidx)
+        return np.rint(np.average(deg_vec))
+
+    def __degree_vec(self, pidx):
+        """
+        Parameters
+        ----------
+        pidx: index of a predicate
+
+        Returns
+        --------
+        a numpy.array of count of triples index by entity.
+
+        Example:
+        triples = list()
+        triples.append(Triple("alice", "works_for", "ibm", 'fake.com', 0.3))
+        triples.append(Triple('alice', 'works_for', 'ibm', 'official.com', 0.2))
+        triples.append(Triple("alice", "works_for", "cisco", 'fake.com', 0.3))
+        triples.append(Triple("alex", "works_for", "oracle", 'affirmative.com', 0.4))
+        triples.append(Triple("alex", "works_for", "uber", 'affirmative.com', 0.3))
+        triples.append(Triple("bobs", "works_for", "cisco", 'affirmative.com', 0.8))
+        triples.append(Triple("bobs", "works_for", "cisco", 'alternative.com', 0.2))
+
+        For this set of triples, we have the degree vector of predicate 'works_for'
+        [3 2 1] since alice has 3 triples, alex has 2 triples, and bobs has 1 triple.
+        """
+        return self.predicate_to_degree_vec[pidx]
 
     def __compute_source_accuracy(self):
         """
@@ -365,11 +437,15 @@ class MultiTruth(Judge):
         """
         print('Computing marginal likelihood P(De)...')
         for e in range(self.nentities):
+            print('entity :', self.entity[e])
             facts = self.entity_to_facts[e]
             accuracy = self.accuracy[self.entity_to_srcs[e]]
             degree = self.degree[self.entity_to_predicate[e]]
             self.entity_to_marginal[e] = self.compute_expectation(facts, accuracy , degree,
                                                                   degree, self.nfalse)
+            # print('entity: ', self.entity)
+            # print('marginal likelihood: ', self.entity_to_marginal)
+
     def __compute_posterior(self):
         """
         Compute posterior probability P(t|De) = P(De|t)P(t)/P(De)
@@ -378,6 +454,9 @@ class MultiTruth(Judge):
         for e in range(self.nentities):
             self.entity_to_posterior[e] = (self.entity_to_likelihood[e] * self.entity_to_prior[e]) / \
                                           self.entity_to_marginal[e]
+            if self.entity_to_marginal[e] == 0:
+                print(self.entity[e])
+                raise ArithmeticError("Marginal is 0")
 
     def __compute_truth(self):
         pass
