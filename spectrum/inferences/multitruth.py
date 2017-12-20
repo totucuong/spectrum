@@ -1,9 +1,7 @@
 from spectrum.inferences.judge import Judge
 from spectrum.models.triple import Triple
-import collections
 import math
 import numpy as np
-from scipy.special import comb
 
 class MultiTruth(Judge):
     """
@@ -13,9 +11,6 @@ class MultiTruth(Judge):
         super().__init__()
         # number of false value in the underlying domain of any entity (subject,predicate)
         self.nfalse = 10
-
-        # default predicate degree (i.e., single-truth assumption
-        self.default_degree = 1
 
     def fit(self, triples):
         super().index(triples)
@@ -42,7 +37,6 @@ class MultiTruth(Judge):
         self.__compute_marginal_likelihood()
         self.__compute_likelihood()
         self.__compute_posterior()
-        # self.__compute_truth()
 
     def compute_expectation(self, facts, accuracy, ntrue, degree, nfalse):
         """
@@ -325,8 +319,6 @@ class MultiTruth(Judge):
         """
         Estimate the degree of predicates
         """
-        # for entity in self.entity:
-        #     self.degree.append(self.)
         for p in range(self.npredicates):
             self.degree.append(self.__learn_degree(p))
 
@@ -443,8 +435,6 @@ class MultiTruth(Judge):
             degree = self.degree[self.entity_to_predicate[e]]
             self.entity_to_marginal[e] = self.compute_expectation(facts, accuracy , degree,
                                                                   degree, self.nfalse)
-            # print('entity: ', self.entity)
-            # print('marginal likelihood: ', self.entity_to_marginal)
 
     def __compute_posterior(self):
         """
@@ -458,5 +448,57 @@ class MultiTruth(Judge):
                 print(self.entity[e])
                 raise ArithmeticError("Marginal is 0")
 
-    def __compute_truth(self):
-        pass
+    def get_correct_triples(self):
+        """
+        Get the correct triples for all entities. For each entities, we select the top-k facts according to their
+        posterior probabilities P(t|De), where k is the degree of the predicate of each entity.
+
+        Returns
+        -------
+        a list of correct triples
+        """
+        correct_triples = list()
+        for e in range(self.nentities):
+            # determine subject, predicate
+            splits = self.entity[e].split('|')
+            subject = splits[0]
+            predicate = splits[1]
+
+            # determine the top k facts
+            top_k = self.compute_top_k(self.degree[self.entity_to_predicate[e]] ,self.entity_to_facts[e],
+                                       self.entity_to_posterior[e])
+            top_k_facts = self.entity_to_facts[e][top_k]
+
+            # their sources
+            sources = self.source[self.entity_to_srcs[e][top_k]]
+
+            triples = []
+            for i in range(len(top_k_facts)):
+                triples.append(Triple(subject, predicate, top_k_facts[i], sources[i]))
+            correct_triples.extend(triples)
+        return correct_triples
+
+    def compute_top_k(self, k, fact, probability):
+        """
+        Compute top-k facts ranked by probability
+
+        Parameters
+        ----------
+        k : the number of facts to be selected
+        fact : a list of strings that represents fact
+        probability : a list of probability of each fact, probabilit[i] is the probability of fact[i]
+
+        Returns
+        --------
+        the indices of of top-k facts
+        """
+        if k > len(fact):
+            raise ValueError('k must be at most length(fact)')
+        if len(fact) != len(probability):
+            raise ValueError('Every fact must have a probability')
+
+        dtype = [('fact', 'U100'), ('probability', float), ('index', int)]
+        index = range(len(fact))
+        fact_with_conf = np.array([f for f in zip(fact, probability, index)], dtype=dtype)
+        fact_with_conf = np.sort(fact_with_conf, order='probability')
+        return [f[2] for f in fact_with_conf[-k:]]
