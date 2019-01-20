@@ -1,21 +1,7 @@
-# spectrum
-**spectrum** is a library for knowledge fusion. Nowadays we have a lot of algorithms to extract structured
-data from unstructured data sources such as text, table, even images. The extracted data
-comes in RDF triples (subject, predicate, object). These triples are extracted from different
-data sources, i.e., web sites and from different extractors. Naturally, some of them contain 
-conflict facts since web sites can contain conflicting information.
+# Spectrum
+**spectrum** is a truth discovery library. It provide black-box truth discovery implementation.
 
-**spectrum** allows you to develop your own algorithm and compare with other algorithms. 
-Currently it implements the following algorithm:
-
-* Majority Voting
-* Truth Finder
-* Accu 
-* Hybrid
-* LTM
-* Spectrum 
-
-## Fundmental concepts
+### Data Models
 
 **Claim** a claim is a triple (subject,predicate,object,confidence,source), where
 
@@ -33,11 +19,9 @@ Currently it implements the following algorithm:
    web site at *url1*.
    
 
-## Datasets
+### Datasets
 
-We collect a number of datasets that were used in researches.
-
-You can find the following datasets with their description in data/original/ together with their
+We collect a number of datasets that were used in researches. They can be found in data/original/ together with their
 descriptions.
 
 1. **stock**
@@ -47,8 +31,4 @@ descriptions.
 5. **weather** 
    
 These datasets are all collected from this [website](http://lunadong.com/fusionDataSets.htm). When you use
-these datasets please cite their papers.
-
-We also collect datasets from [here.](http://da.qcri.org/dafna/#/dafna/exp_sections/realworldDS/flight.html)
-Most of the datasets found here overlaps with the above datasets. But they are already processed. 
-You can find these processed versions in data/
+these datasets please cite their papers. We also collect datasets from [here.](http://da.qcri.org/dafna/#/dafna/exp_sections/realworldDS/flight.html).
