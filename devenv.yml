@@ -1,0 +1,12 @@
+name: spectrumdev
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.6
+  - jupyterlab=0.35.4
+  - tensorflow=1.12
+  - numpy=1.16
+  - pandas=0.23.4
+  - pip:
+    - tensorflow-probability==0.5.0
