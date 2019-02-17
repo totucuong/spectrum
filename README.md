@@ -40,9 +40,17 @@ If you want to extends ``spectrum`` then you can create a conda environment usin
 ```
 conda env create -f devenv.yml
 ```
+This will create a conda environment called ``spectrumdev``
 
 Or if you want to use ``spectrum`` then you can create a conda environment using:
 
 ```
 conda env create -f env.yml
+```
+This will create a conda enivornment called ``spectrum``
+
+If you want to run ipython notebooks in the directory ``notebooks``, you need to install seaborn using the following command
+
+```
+conda install seaborn
 ```
