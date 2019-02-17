@@ -32,3 +32,17 @@ descriptions.
    
 These datasets are all collected from this [website](http://lunadong.com/fusionDataSets.htm). When you use
 these datasets please cite their papers. We also collect datasets from [here.](http://da.qcri.org/dafna/#/dafna/exp_sections/realworldDS/flight.html).
+
+
+# Install
+If you want to extends ``spectrum`` then you can create a conda environment using:
+
+```
+conda env create -f devenv.yml
+```
+
+Or if you want to use ``spectrum`` then you can create a conda environment using:
+
+```
+conda env create -f env.yml
+```
