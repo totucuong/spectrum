@@ -29,20 +29,15 @@ descriptions.
 3. **flights**
 4. **restaurant**
 5. **weather** 
+6. **population**
    
 These datasets are all collected from this [website](http://lunadong.com/fusionDataSets.htm). When you use
 these datasets please cite their papers. We also collect datasets from [here.](http://da.qcri.org/dafna/#/dafna/exp_sections/realworldDS/flight.html).
 
 
 # Install
-If you want to extends ``spectrum`` then you can create a conda environment using:
 
-```
-conda env create -f devenv.yml
-```
-This will create a conda environment called ``spectrumdev``
-
-Or if you want to use ``spectrum`` then you can create a conda environment using:
+If you want to use ``spectrum`` then you can create a conda environment using:
 
 ```
 conda env create -f env.yml
@@ -52,5 +47,6 @@ This will create a conda enivornment called ``spectrum``
 If you want to run ipython notebooks in the directory ``notebooks``, you need to install seaborn using the following command
 
 ```
+conda install jupyterlab
 conda install seaborn
 ```
