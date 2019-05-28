@@ -100,3 +100,9 @@ ENV/
 # mypy
 .mypy_cache/
 /notebooks/draft.ipynb
+
+# Mac
+.DS_Store
+
+# VScode
+.vscode
