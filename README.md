@@ -1,25 +1,34 @@
 # Spectrum
+
 **spectrum** is a truth discovery library. It provide black-box truth discovery implementation.
 
-### Data Models
+Truth discovery refers to the process of reconciling conflicting data values that are provided by different data sources while also estimate the data source reliabilities.
 
-**Claim** a claim is a triple (subject,predicate,object,confidence,source), where
+Truth discovery algorithms falls into two categories. In the first category, iterative algorithms are used to infer correct values and source reliabilities. These iterative algorithms rely on one single key idea: if a value is provided by multiple reliable sources then there is a high chance it is correct. On the other hand if a source provides many correct values then it is considered as reliable. A typical workflow is that scores are initialized for source reliabilities as well as data value correctness. Then source reliabilities scores are used to update correctness scores of data values.
 
-   1. *subject* is a named entity such as "Obama", or "Hanoi".
-   2. *predicate* is a relation between *subject* and *object*
-   3. *object* is the value of (subject,predicate). For example, a claim (Obama, bornIn, USA)
-   have "Obama" as the subject, "bornIn" as the predicate, "USA" as the object. In practice,
-   object is not named entity per se, but it can extends to be a numerical value, or a date.
-   4. *confidence* is a numerical score that express the belief degree in the claim. It can be
-   a probability or just a nonpositive values. Typically
-   this score comes from an extractor. If we do not have the confidence, or just want to ignore
-   them then we can set them all to be 1.
-   5. *source* is an id that represents the data sources that provide the claim. It could
-   be just *s1* or *extractor1_url1*, which means this claim was produced by *extractor1* from
-   web site at *url1*.
+The second category of truth discovery algorithms uses statistical models. These models has two main advantages:
+
+1. Its output has clear interpretation. Reliability and value scores are modeled as probability distributions. These enables downstream decision making.
+2. Easy incorporation of domain knowledge via priors.
+
+The statistical discovery problem has two disadvantages:
+
+1. Scalability: a lot of them relies on MCMC algorithms which can be slow.
+2. Model complex: it is not easy to specify and then build inference algorithm for statistical models.
+
+We introduce variational inference black-box variational inference to solve the scalability problem and enable quick model experiments. VI cases inference problem into optimization problem which enables us to bring in stochastic gradient descent algorithm that scale with dataset size.
+
+
+
+# Data Models
+**Claim** a claim is a triple (source, object, value), where:
+
+   1. *source* can be a website or a person that asserts a value about an object
+   2. *object* can be a person's birthday, or the height of Mount Everest.
+   3. *value* is the value of an object. For example `16/04/2001` is a birthday of someone.
    
 
-### Datasets
+# Datasets
 
 We collect a number of datasets that were used in researches. They can be found in data/original/ together with their
 descriptions.
