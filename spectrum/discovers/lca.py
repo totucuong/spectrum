@@ -50,17 +50,47 @@ def build_observation(claims):
     A dictionary mapping objects to a matrix of observations, (o -> [b_sc]), where b_sc = {0, 1}, 1 means 
     source s asserts c about object o, and 0 means s thinks c is wrong.
     
+    Note that a source s does not need to make assertions about all objects. The superflous assertions b_sc
+    is rendered useless using the mask W (see build_mask()).
+
+    Also note that, we encode value (assertions a source about an object) as 
+    categorical value and label encode them.
+
     Parameters
     ----------
     claims: pd.DataFrame
-        a data frame that has columns [source_id, object_id, value]
+        a data frame that has columns [source_id, object_id, value_id]
         
     Returns
     -------
-    observation: np.ndarray
-        a 2D array of shape (source, object) (b_sc in the paper)
+    observation: dict
+        a dictionary mapping object o to its assertation maxtrix [b_sc]
     """
-    pass
+    max_ids = claims.max()
+    n_sources = max_ids['source_id'] + 1
+    n_objects = max_ids['object_id'] + 1
+
+    observation = dict()
+
+    def build_obs_matrix(df, object_id):
+        """build matrix b_sc from a data frame
+        
+        Parameters
+        ----------
+        df: pd.DataFrame
+            a data frame whose columns are [source_id, value_id]
+        """
+        n_values = df.max()['value_id'] + 1
+        bsc = np.zeros(shape=(n_sources, n_values))
+
+        def set_assertion(x):
+            bsc[x['source_id'], x['value_id']] = 1
+
+        df.apply(set_assertion, axis=1)
+        observation[object_id] = bsc
+
+    claims.groupby('object_id').apply(lambda x: build_obs_matrix(x, x.name))
+    return observation
 
 
 def bvi(simpleLCA_fn):
