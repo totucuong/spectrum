@@ -1,4 +1,7 @@
 import numpy as np
+import pyro
+import pyro.distributions as dist
+import torch
 
 
 def simpleLCA(observation, confidence):
@@ -91,6 +94,50 @@ def build_observation(claims):
 
     claims.groupby('object_id').apply(lambda x: build_obs_matrix(x, x.name))
     return observation
+
+
+def lca_model(observation, mask):
+    """Build a Latent Credibility Analysis (i.e., a probablistic model).
+
+    The LCA model can be expressed mathematically as follows.
+
+    @TODO: vectorize the implementation if possible.
+
+    Parameters
+    ----------
+    observation: dict
+        a dictionary of observation (o->[b_sc]). See build_observation() for details.
+
+    mask: np.array
+        a 2D array of shape (#sources, #objects)
+    """
+    n_sources, n_objects = mask.shape
+    # create honest rv, H_s, for each sources
+    for s in range(n_sources):
+        pyro.sample(
+            f'H_{s}',
+            dist.Bernoulli(
+                pyro.param(f'theta_s_{s}', init_tensor=torch.tensor(0.5))))
+    # creat hidden truth rv for each object m
+    for m in range(n_objects):
+        _, domain_size = observation[m].shape
+        pyro.sample(
+            f'y_{m}',
+            dist.Categorical(probs=pyro.param(f'theta_m_{m}',
+                                              init_tensor=1 / domain_size *
+                                              torch.ones((domain_size, )))))
+    # creat observation rv
+    # we are still missing how alpha_sm is computed: alpha_sm = f(y_m, H_s)
+    for s in range(n_sources):
+        for m in range(n_objects):
+            if mask[s, m]:  # source s does assert about object m
+                _, domain_size = observation[m].shape
+                pyro.sample(
+                    f'b_{s, m}',
+                    dist.Dirichlet(
+                        concentration=pyro.param(f'alpha_sm_{s,m}',
+                                                 init_tensor=1 / domain_size *
+                                                 torch.ones((domain_size, )))))
 
 
 def bvi(simpleLCA_fn):
