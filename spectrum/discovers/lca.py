@@ -41,7 +41,7 @@ def build_mask(claims):
         W[x.source_id, x.object_id] = 1
 
     claims.apply(lambda x: set_assertion(x), axis=1)
-    return W
+    return W.astype(int)
 
 
 def build_observation(claims):
@@ -59,7 +59,7 @@ def build_observation(claims):
     Parameters
     ----------
     claims: pd.DataFrame
-        a data frame that has columns [source_id, object_id, value_id]
+        a data frame that has columns [source_id, object_id, value]
         
     Returns
     -------
@@ -78,13 +78,13 @@ def build_observation(claims):
         Parameters
         ----------
         df: pd.DataFrame
-            a data frame whose columns are [source_id, value_id]
+            a data frame whose columns are [source_id, value]
         """
-        n_values = df.max()['value_id'] + 1
+        n_values = df.max()['value'] + 1
         bsc = np.zeros(shape=(n_sources, n_values))
 
         def set_assertion(x):
-            bsc[x['source_id'], x['value_id']] = 1
+            bsc[x['source_id'], x['value']] = 1
 
         df.apply(set_assertion, axis=1)
         observation[object_id] = bsc
