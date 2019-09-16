@@ -97,7 +97,18 @@ def build_observation(claims):
 
 
 def lca_model(observation, mask):
-    """Build a Latent Credibility Analysis (i.e., a probablistic model).
+    """Build a Latent Credibility Analysis (LCA).
+    
+    A LCA model represents a joint distribution p(Y, H, X), where 
+    Y represents hidden truth rvs, H represents data source honesty, and X represents observation.
+
+    Concretely, let's assume that we have M objects, S data sources, and our observation will be
+    the mask matrix W, `mask`, (see build_mask()), and observation matrix `observation` (see build_observation()).
+    
+    With this context, we have:
+        p(Y, H, X) = product_{m=1,..,M}[p(y_m, H, X)], where
+        p(y_m, H, X) = p(y_m)product_{s in S_m}[p(b_sm|y_m,s)p(s)],
+        where S_m are the set of sources that make claims about an object m.
 
     The LCA model can be expressed mathematically as follows.
 
@@ -113,31 +124,43 @@ def lca_model(observation, mask):
     """
     n_sources, n_objects = mask.shape
     # create honest rv, H_s, for each sources
+    honest = []
     for s in range(n_sources):
-        pyro.sample(
-            f'H_{s}',
-            dist.Bernoulli(
-                pyro.param(f'theta_s_{s}', init_tensor=torch.tensor(0.5))))
+        honest.append(
+            qpyro.sample(
+                f'{s}',
+                dist.Bernoulli(
+                    pyro.param(f'theta_s_{s}',
+                               init_tensor=torch.tensor(0.5)))))
     # creat hidden truth rv for each object m
+    hidden_truth = []
     for m in range(n_objects):
         _, domain_size = observation[m].shape
-        pyro.sample(
-            f'y_{m}',
-            dist.Categorical(probs=pyro.param(f'theta_m_{m}',
-                                              init_tensor=1 / domain_size *
-                                              torch.ones((domain_size, )))))
+        hidden_truth.append(
+            pyro.sample(
+                f'y_{m}',
+                dist.Categorical(
+                    probs=pyro.param(f'theta_m_{m}',
+                                     init_tensor=1 / domain_size *
+                                     torch.ones((domain_size, ))))))
+    for m in range(n_objects):
+        # p(y_m)product_{s in S_m}[p(b_sm|y_m,s)p(s)]
+        for s in range(n_objects):
+            if mask[s, m]:  # this represents S_m
+                pass
+
     # creat observation rv
     # we are still missing how alpha_sm is computed: alpha_sm = f(y_m, H_s)
-    for s in range(n_sources):
-        for m in range(n_objects):
-            if mask[s, m]:  # source s does assert about object m
-                _, domain_size = observation[m].shape
-                pyro.sample(
-                    f'b_{s, m}',
-                    dist.Dirichlet(
-                        concentration=pyro.param(f'alpha_sm_{s,m}',
-                                                 init_tensor=1 / domain_size *
-                                                 torch.ones((domain_size, )))))
+    # for s in range(n_sources):
+    #     for m in range(n_objects):
+    #         if mask[s, m]:  # source s does assert about object m
+    #             _, domain_size = observation[m].shape
+    #             pyro.sample(
+    #                 f'b_{s, m}',
+    #                 dist.Dirichlet(
+    #                     concentration=pyro.param(f'alpha_sm_{s,m}',
+    #                                              init_tensor=1 / domain_size *
+    #                                              torch.ones((domain_size, )))))
 
 
 def bvi(simpleLCA_fn):
