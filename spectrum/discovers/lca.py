@@ -147,10 +147,40 @@ def lca_model(observation, mask):
         y_m = hidden_truth[m]
         _, domain_size = observation[m].shape
         for s in range(n_objects):
-            theta_sm = ((1 - pyro.param(f'theta_s_{s}') /
-                         (domain_size - 1))) * torch.ones((domain_size, ))
-            theta_sm[y_m] = pyro.param(f'theta_s_{s}')
-            pyro.sample(f'b_{s,m}', dist.Categorical(probs=theta_sm))
+            if mask[s, m]:
+                theta_sm = ((1 - pyro.param(f'theta_s_{s}') /
+                             (domain_size - 1))) * torch.ones((domain_size, ))
+                theta_sm[y_m] = pyro.param(f'theta_s_{s}')
+                pyro.sample(f'b_{s}_{m}', dist.Categorical(probs=theta_sm))
+
+
+def make_observation_mapper(observation, mask):
+    """Make a dictionary of observation.
+
+    Parameters
+    ----------
+    observation: dict
+        a dictionary of observation (o->[b_sc]). See build_observation() for
+        details.
+
+    mask: np.array
+        a 2D array of shape (#sources, #objects)
+       
+    Returns
+    -------
+    observation_mapper: dict
+        an dictionary that map rv to their observed value
+    """
+    observation_mapper = dict()
+    # S and M
+    n_sources, n_objects = mask.shape
+    for m in range(n_objects):
+        assertion = np.argmax(observation[m], axis=1)
+        for s in range(n_sources):
+            if mask[s, m]:
+                # claims made by s about m
+                observation_mapper[f'b_{s}_{m}'] = torch.tensor(assertion[s])
+    return observation_mapper
 
 
 def bvi(simpleLCA_fn):
