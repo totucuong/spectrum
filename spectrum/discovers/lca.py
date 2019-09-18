@@ -14,8 +14,7 @@ def simpleLCA(observation, confidence):
     ----------
     observation: np.ndarray
     """
-    observation = build_observation(claims)
-    confidence = build_confidence(claims)
+    pass
 
 
 def build_mask(claims):
@@ -98,26 +97,27 @@ def build_observation(claims):
 
 def lca_model(observation, mask):
     """Build a Latent Credibility Analysis (LCA).
-    
-    A LCA model represents a joint distribution p(Y, H, X), where 
-    Y represents hidden truth rvs, H represents data source honesty, and X represents observation.
+   
+    A LCA model represents a joint distribution p(Y, H, X), where
+    Y represents hidden truth rvs, H represents data source honesty, and X
+    represents observation.
 
-    Concretely, let's assume that we have M objects, S data sources, and our observation will be
-    the mask matrix W, `mask`, (see build_mask()), and observation matrix `observation` (see build_observation()).
-    
+    Concretely, let's assume that we have M objects, S data sources, and our
+    observation will be the mask matrix W, `mask`, (see build_mask()), and
+    observation matrix `observation` (see build_observation()).
+
     With this context, we have:
         p(Y, H, X) = product_{m=1,..,M}[p(y_m, H, X)], where
         p(y_m, H, X) = p(y_m)product_{s in S_m}[p(b_sm|y_m,s)p(s)],
         where S_m are the set of sources that make claims about an object m.
-
-    The LCA model can be expressed mathematically as follows.
 
     @TODO: vectorize the implementation if possible.
 
     Parameters
     ----------
     observation: dict
-        a dictionary of observation (o->[b_sc]). See build_observation() for details.
+        a dictionary of observation (o->[b_sc]). See build_observation() for
+        details.
 
     mask: np.array
         a 2D array of shape (#sources, #objects)
@@ -127,8 +127,8 @@ def lca_model(observation, mask):
     honest = []
     for s in range(n_sources):
         honest.append(
-            qpyro.sample(
-                f'{s}',
+            pyro.sample(
+                f's_{s}',
                 dist.Bernoulli(
                     pyro.param(f'theta_s_{s}',
                                init_tensor=torch.tensor(0.5)))))
@@ -144,23 +144,13 @@ def lca_model(observation, mask):
                                      init_tensor=1 / domain_size *
                                      torch.ones((domain_size, ))))))
     for m in range(n_objects):
-        # p(y_m)product_{s in S_m}[p(b_sm|y_m,s)p(s)]
+        y_m = hidden_truth[m]
+        _, domain_size = observation[m].shape
         for s in range(n_objects):
-            if mask[s, m]:  # this represents S_m
-                pass
-
-    # creat observation rv
-    # we are still missing how alpha_sm is computed: alpha_sm = f(y_m, H_s)
-    # for s in range(n_sources):
-    #     for m in range(n_objects):
-    #         if mask[s, m]:  # source s does assert about object m
-    #             _, domain_size = observation[m].shape
-    #             pyro.sample(
-    #                 f'b_{s, m}',
-    #                 dist.Dirichlet(
-    #                     concentration=pyro.param(f'alpha_sm_{s,m}',
-    #                                              init_tensor=1 / domain_size *
-    #                                              torch.ones((domain_size, )))))
+            theta_sm = ((1 - pyro.param(f'theta_s_{s}') /
+                         (domain_size - 1))) * torch.ones((domain_size, ))
+            theta_sm[y_m] = pyro.param(f'theta_s_{s}')
+            pyro.sample(f'b_{s,m}', dist.Categorical(probs=theta_sm))
 
 
 def bvi(simpleLCA_fn):
