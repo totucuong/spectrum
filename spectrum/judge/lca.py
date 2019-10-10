@@ -129,8 +129,9 @@ def lca_model(observation, mask):
         honest.append(
             pyro.sample(
                 f's_{s}',
-                dist.Bernoulli(logits=pyro.param(f'theta_s_{s}',
-                                init_tensor=torch.tensor(0.0)))))
+                dist.Bernoulli(logits=pyro.param(
+                    f'theta_s_{s}',
+                    init_tensor=draw_log_from_open_zero_and_one()))))
     # creat hidden truth rv for each object m
     hidden_truth = []
     for m in range(n_objects):
@@ -138,21 +139,19 @@ def lca_model(observation, mask):
         hidden_truth.append(
             pyro.sample(
                 f'y_{m}',
-                dist.Categorical(
-                    logits=pyro.param(f'theta_m_{m}',
-                                     init_tensor=torch.ones((domain_size, ))))))
+                dist.Categorical(logits=pyro.param(
+                    f'theta_m_{m}', init_tensor=torch.ones((domain_size, ))))))
     for m in range(n_objects):
         y_m = hidden_truth[m]
         _, domain_size = observation[m].shape
         assert domain_size >= 2
         for s in range(n_objects):
             if mask[s, m]:
-                # TODO use from torch.distributions.utils import probs_to_logits, logits_to_probs, lazy_property
-                theta_sm = ((1 - pyro.param(f'theta_s_{s}') /
-                             (domain_size - 1))) * torch.ones((domain_size, ))
-                theta_sm[y_m] = pyro.param(f'theta_s_{s}')
-                #-----
-                pyro.sample(f'b_{s}_{m}', dist.Categorical(probs=theta_sm))
+                logits = (1 - torch.exp(
+                    pyro.param(f'theta_s_{s}'))) / domain_size * torch.ones(
+                        (domain_size, ))
+                logits[y_m] = pyro.param(f'theta_s_{s}')
+                pyro.sample(f'b_{s}_{m}', dist.Categorical(probs=logits))
 
 
 def lca_guide(observation, mask):
@@ -178,7 +177,9 @@ def lca_guide(observation, mask):
         honest.append(
             pyro.sample(
                 f's_{s}',
-                dist.Bernoulli(logits=pyro.param(f'beta_s_{s}', init_tensor=torch.tensor(0.0)))))
+                dist.Bernoulli(logits=pyro.param(
+                    f'beta_s_{s}',
+                    init_tensor=draw_log_from_open_zero_and_one()))))
     # creat hidden truth rv for each object m
     hidden_truth = []
     for m in range(n_objects):
@@ -190,9 +191,9 @@ def lca_guide(observation, mask):
             pyro.sample(
                 f'y_{m}',
                 dist.Categorical(
-                    probs=pyro.param(f'beta_m_{m}',
-                                     init_tensor=1 / domain_size *
-                                     torch.ones((domain_size, ))))))
+                    logits=pyro.param(f'beta_m_{m}',
+                                      init_tensor=1 / domain_size *
+                                      torch.ones((domain_size, ))))))
 
 
 def make_observation_mapper(observation, mask):
@@ -250,6 +251,35 @@ def bvi(simpleLCA_fn):
     pass
 
 
+def draw_log_from_open_zero_and_one():
+    return torch.log(
+        torch.distributions.Dirichlet(torch.tensor([0.5, 0.5])).sample()[0])
+
+
+def get_trusted_source(posteriors, reliability_threshold=0.8):
+    """Compute a list of trusted sources given a threshold of their relability
+
+    Parameters
+    ----------
+    posteriors: dict
+        a dictionary rv_name->posterior dist
+
+    reliability_threshold: float
+        if a source has reliability > reliability_threshold then it will be included
+        in the result
+
+    Returns
+    -------
+    trusted_sources: list
+        a list of trusted sources id
+    """
+    result = [
+        int(k.split('_')[2]) for k, v in posteriors.items()
+        if k.startswith('beta_s') and torch.exp(v) > reliability_threshold
+    ]
+    return result
+
+
 def main():
     """We use the following example, taken from LCA paper, to test out
     all functions in this examples:
@@ -282,33 +312,45 @@ def main():
     """
     import pandas as pd
     claims = dict()
-    claims['source_id'] = [0, 0, 1]
-    claims['object_id'] = [0, 1, 1]
-    claims['value'] = [0, 1, 0]
+    claims['source_id'] = [0, 0, 1, 1]
+    claims['object_id'] = [0, 1, 1, 0]
+    claims['value'] = [0, 1, 0, 1]
     claims = pd.DataFrame(data=claims)
     mask = build_mask(claims)
     observation = build_observation(claims)
     data = make_observation_mapper(observation, mask)
     conditioned_lca = pyro.condition(lca_model, data=data)
-
     # pyro.clear_param_store()
     svi = pyro.infer.SVI(model=conditioned_lca,
-                        guide=lca_guide,
-                        optim=pyro.optim.SGD({"lr": 0.001, "momentum":0.1}),
-                        loss=pyro.infer.Trace_ELBO())
-
+                         guide=lca_guide,
+                         optim=pyro.optim.SGD({
+                             "lr": 0.001,
+                             "momentum": 0.1
+                         }),
+                         loss=pyro.infer.Trace_ELBO())
     losses = []
     num_steps = 2500
     for t in range(num_steps):
         print(f'step: {t}')
         print(pyro.get_param_store().get_state())
         losses.append(svi.step(observation, mask))
-        print('-'*80)
-
+        print('-' * 80)
     # plt.plot(losses)
     # plt.title("ELBO")
     # plt.xlabel("step")
-    # plt.ylabel("loss")  
+    # plt.ylabel("loss")
+
+
+def learn(inference, epochs):
+    # losses = []
+    # for t in range(epochs):
+    #     print(f'step: {t}')
+    #     print(pyro.get_param_store().get_state())
+    #     losses.append(inference.step(observation, mask))
+    # print('-' * 80)
+    # return losses
+    pass
+
 
 if __name__ == "__main__":
     main()
