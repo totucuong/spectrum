@@ -1,20 +1,8 @@
 import numpy as np
+import pandas as pd
 import pyro
 import pyro.distributions as dist
 import torch
-
-
-def simpleLCA(observation, confidence):
-    """implement simpleLCA generative model.
-    
-    A claim is modeled as triple (source_id, object_id, value). This means the ``source_id`` asserts
-    that the ``object_id`` takes on value ``value``.
-    
-    Parameters
-    ----------
-    observation: np.ndarray
-    """
-    pass
 
 
 def build_mask(claims):
@@ -131,7 +119,7 @@ def lca_model(observation, mask):
                 f's_{s}',
                 dist.Bernoulli(logits=pyro.param(
                     f'theta_s_{s}',
-                    init_tensor=draw_log_from_open_zero_and_one()))))
+                    init_tensor=_draw_log_from_open_zero_and_one()))))
     # creat hidden truth rv for each object m
     hidden_truth = []
     for m in range(n_objects):
@@ -179,7 +167,7 @@ def lca_guide(observation, mask):
                 f's_{s}',
                 dist.Bernoulli(logits=pyro.param(
                     f'beta_s_{s}',
-                    init_tensor=draw_log_from_open_zero_and_one()))))
+                    init_tensor=_draw_log_from_open_zero_and_one()))))
     # creat hidden truth rv for each object m
     hidden_truth = []
     for m in range(n_objects):
@@ -225,7 +213,7 @@ def make_observation_mapper(observation, mask):
     return observation_mapper
 
 
-def bvi(simpleLCA_fn):
+def bvi(model, guide, observation, mask, epochs=10, learning_rate=1e-5):
     """perform blackbox mean field variational inference on simpleLCA.
     
     This methods take a simpleLCA model as input and perform blackbox variational
@@ -237,26 +225,28 @@ def bvi(simpleLCA_fn):
     the domain of an object, then posterior(o) is the distribution over these support.
     The underlying truth value of an object could be computed as the mode of this
     distribution.
-    
-    Parameters
-    ----------
-    simpleLCA_fn: function
-        a function that represents the simpleLCA generative models.
-        
-    Returns
-    -------
-    posteriors: list
-        a list of posterior distributions of hidden truths and source reliability.
     """
-    pass
+    data = make_observation_mapper(observation, mask)
+    conditioned_lca = pyro.condition(lca_model, data=data)
+    pyro.clear_param_store() # is it needed?
+    svi = pyro.infer.SVI(model=conditioned_lca,
+                        guide=lca_guide,
+                        optim=pyro.optim.Adam({"lr": learning_rate}),
+                        loss=pyro.infer.Trace_ELBO())
+    losses = []
+    for t in range(epochs):
+        cur_loss = svi.step(observation, mask)
+        losses.append(cur_loss)
+        print(f'current loss - {cur_loss}')
+    return losses
 
 
-def draw_log_from_open_zero_and_one():
+def _draw_log_from_open_zero_and_one():
     return torch.log(
         torch.distributions.Dirichlet(torch.tensor([0.5, 0.5])).sample()[0])
 
 
-def get_trusted_source(posteriors, reliability_threshold=0.8):
+def discover_trusted_source(posteriors, reliability_threshold=0.8):
     """Compute a list of trusted sources given a threshold of their relability
 
     Parameters
@@ -278,6 +268,16 @@ def get_trusted_source(posteriors, reliability_threshold=0.8):
         if k.startswith('beta_s') and torch.exp(v) > reliability_threshold
     ]
     return result
+
+
+def discover_truths(posteriors):
+    object_id = []
+    value = []
+    for k, v in posteriors.items():
+        if k.startswith('beta_m'):
+            object_id.append(int(k.split('_')[2]))
+            value.append(int(torch.argmax(v).numpy()))
+    return pd.DataFrame(data={'object_id': object_id, 'value': value})
 
 
 def main():
@@ -310,45 +310,6 @@ def main():
     objects. w_so =1 if s makes assertion about o, otherwise 0.
 
     """
-    import pandas as pd
-    claims = dict()
-    claims['source_id'] = [0, 0, 1, 1]
-    claims['object_id'] = [0, 1, 1, 0]
-    claims['value'] = [0, 1, 0, 1]
-    claims = pd.DataFrame(data=claims)
-    mask = build_mask(claims)
-    observation = build_observation(claims)
-    data = make_observation_mapper(observation, mask)
-    conditioned_lca = pyro.condition(lca_model, data=data)
-    # pyro.clear_param_store()
-    svi = pyro.infer.SVI(model=conditioned_lca,
-                         guide=lca_guide,
-                         optim=pyro.optim.SGD({
-                             "lr": 0.001,
-                             "momentum": 0.1
-                         }),
-                         loss=pyro.infer.Trace_ELBO())
-    losses = []
-    num_steps = 2500
-    for t in range(num_steps):
-        print(f'step: {t}')
-        print(pyro.get_param_store().get_state())
-        losses.append(svi.step(observation, mask))
-        print('-' * 80)
-    # plt.plot(losses)
-    # plt.title("ELBO")
-    # plt.xlabel("step")
-    # plt.ylabel("loss")
-
-
-def learn(inference, epochs):
-    # losses = []
-    # for t in range(epochs):
-    #     print(f'step: {t}')
-    #     print(pyro.get_param_store().get_state())
-    #     losses.append(inference.step(observation, mask))
-    # print('-' * 80)
-    # return losses
     pass
 
 
