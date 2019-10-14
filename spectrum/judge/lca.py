@@ -133,7 +133,7 @@ def lca_model(observation, mask):
         y_m = hidden_truth[m]
         _, domain_size = observation[m].shape
         assert domain_size >= 2
-        for s in range(n_objects):
+        for s in range(n_sources):
             if mask[s, m]:
                 logits = (1 - torch.exp(
                     pyro.param(f'theta_s_{s}'))) / domain_size * torch.ones(
@@ -213,7 +213,13 @@ def make_observation_mapper(observation, mask):
     return observation_mapper
 
 
-def bvi(model, guide, observation, mask, epochs=10, learning_rate=1e-5):
+def bvi(model,
+        guide,
+        observation,
+        mask,
+        epochs=10,
+        learning_rate=1e-5,
+        num_samples=1):
     """perform blackbox mean field variational inference on simpleLCA.
     
     This methods take a simpleLCA model as input and perform blackbox variational
@@ -228,11 +234,12 @@ def bvi(model, guide, observation, mask, epochs=10, learning_rate=1e-5):
     """
     data = make_observation_mapper(observation, mask)
     conditioned_lca = pyro.condition(lca_model, data=data)
-    pyro.clear_param_store() # is it needed?
+    pyro.clear_param_store()  # is it needed?
     svi = pyro.infer.SVI(model=conditioned_lca,
-                        guide=lca_guide,
-                        optim=pyro.optim.Adam({"lr": learning_rate}),
-                        loss=pyro.infer.Trace_ELBO())
+                         guide=lca_guide,
+                         optim=pyro.optim.Adam({"lr": learning_rate}),
+                         loss=pyro.infer.Trace_ELBO(),
+                         num_samples=num_samples)
     losses = []
     for t in range(epochs):
         cur_loss = svi.step(observation, mask)
@@ -271,6 +278,7 @@ def discover_trusted_source(posteriors, reliability_threshold=0.8):
 
 
 def discover_truths(posteriors):
+
     object_id = []
     value = []
     for k, v in posteriors.items():
