@@ -5,84 +5,6 @@ import pyro.distributions as dist
 import torch
 
 
-def build_mask(claims):
-    """Build the mask matrix [w_so] of shape |S| * |O|, where S and O 
-    are the set of sources and objects, respectively.
-    
-    We assume that the source_id are numbered from 0 to |S|-1. Similarly
-    the objects are numbered from 0 to |O|-1.
-
-    Parameters
-    ----------
-    claims: pd.DataFrame
-        a data frame that has columns [source_id, object_id, value]
-        
-    Returns
-    -------
-    mask: np.ndarray
-        a 2D array of shape (source, object) (w_so in the paper)
-    """
-    max_ids = claims.max()[['source_id', 'object_id']]
-    n_sources = max_ids['source_id'] + 1
-    n_objects = max_ids['object_id'] + 1
-    W = np.zeros(shape=(n_sources, n_objects))
-
-    def set_assertion(x):
-        W[x.source_id, x.object_id] = 1
-
-    claims.apply(lambda x: set_assertion(x), axis=1)
-    return W.astype(int)
-
-
-def build_observation(claims):
-    """Build observation data structure out of `claims`.
-    
-    A dictionary mapping objects to a matrix of observations, (o -> [b_sc]), where b_sc = {0, 1}, 1 means 
-    source s asserts c about object o, and 0 means s thinks c is wrong.
-    
-    Note that a source s does not need to make assertions about all objects. The superflous assertions b_sc
-    is rendered useless using the mask W (see build_mask()).
-
-    Also note that, we encode value (assertions a source about an object) as 
-    categorical value and label encode them.
-
-    Parameters
-    ----------
-    claims: pd.DataFrame
-        a data frame that has columns [source_id, object_id, value]
-        
-    Returns
-    -------
-    observation: dict
-        a dictionary mapping object o to its assertation maxtrix [b_sc]
-    """
-    max_ids = claims.max()
-    n_sources = max_ids['source_id'] + 1
-    n_objects = max_ids['object_id'] + 1
-
-    observation = dict()
-
-    def build_obs_matrix(df, object_id):
-        """build matrix b_sc from a data frame
-        
-        Parameters
-        ----------
-        df: pd.DataFrame
-            a data frame whose columns are [source_id, value]
-        """
-        n_values = df.max()['value'] + 1
-        bsc = np.zeros(shape=(n_sources, n_values))
-
-        def set_assertion(x):
-            bsc[x['source_id'], x['value']] = 1
-
-        df.apply(set_assertion, axis=1)
-        observation[object_id] = bsc
-
-    claims.groupby('object_id').apply(lambda x: build_obs_matrix(x, x.name))
-    return observation
-
-
 def lca_model(claims):
     """Build a Latent Credibility Analysis (LCA).
    
@@ -99,16 +21,11 @@ def lca_model(claims):
         p(y_m, H, X) = p(y_m)product_{s in S_m}[p(b_sm|y_m,s)p(s)],
         where S_m are the set of sources that make claims about an object m.
 
-    @TODO: vectorize the implementation if possible.
-
     Parameters
     ----------
-    observation: dict
-        a dictionary of observation (o->[b_sc]). See build_observation() for
-        details.
+    claims: pd.DataFrame
+        a data frame that has columns [source_id, object_id, value]
 
-    mask: np.array
-        a 2D array of shape (#sources, #objects)
     """
     problem_sizes = claims.nunique()
     n_sources = problem_sizes['source_id']
@@ -120,9 +37,9 @@ def lca_model(claims):
         honest.append(
             pyro.sample(
                 f's_{s}',
-                dist.Bernoulli(logits=pyro.param(
-                    f'theta_s_{s}',
-                    init_tensor=_draw_log_from_open_zero_and_one()))))
+                dist.Bernoulli(logits=pyro.param(f'theta_s_{s}',
+                                                 init_tensor=_draw_logits()))))
+
     # creat hidden truth rv for each object m
     hidden_truth = []
     for m in range(n_objects):
@@ -132,17 +49,26 @@ def lca_model(claims):
                 dist.Categorical(logits=pyro.param(f'theta_m_{m}',
                                                    init_tensor=torch.ones((
                                                        domain_size[m], ))))))
+
     for _, c in claims.iterrows():
         m = c['object_id']
+        s = c['source_id']
         y_m = hidden_truth[m]
-        logits = (1 - torch.exp(
-            pyro.param(f'theta_s_{s}'))) / domain_size[m] * torch.ones(
-                (domain_size[m], ))  # verify this init
-        logits[y_m] = pyro.param(f'theta_s_{s}')
-        pyro.sample(f'b_{s}_{m}', dist.Categorical(probs=logits))
+        logits = build_obj_logits_from_src_honest(pyro.param(f'theta_s_{s}'),
+                                                  domain_size[m], y_m)
+        pyro.sample(f'b_{s}_{m}', dist.Categorical(logits=logits))
 
 
-def lca_guide(observation, mask):
+def build_obj_logits_from_src_honest(src_logit, obj_domain_size, truth):
+    obj_probs = torch.ones((obj_domain_size, ))
+    # probs for fake value
+    src_prob = torch.exp(src_logit)
+    obj_probs *= (1 - src_prob) / (obj_domain_size - 1)
+    obj_probs[truth] = src_prob
+    return torch.log(obj_probs)
+
+
+def lca_guide(claims):
     """Build a guide for lca_model.
 
     A guide is an approximation of the real posterior distribution p(z|D), 
@@ -151,50 +77,35 @@ def lca_guide(observation, mask):
     
     Parameters
     ----------
-    observation: dict
-        a dictionary of observation (o->[b_sc]). See build_observation() for
-        details.
-
-    mask: np.array
-        a 2D array of shape (#sources, #objects)
+    claims: pd.DataFrame
+        a data frame that has columns [source_id, object_id, value]
     """
-    n_sources, n_objects = mask.shape
-    # create honest rv, H_s, for each sources
-    honest = []
+    max_ids = claims.max()
+    n_sources = max_ids['source_id'] + 1
+    n_objects = max_ids['object_id'] + 1
+    domain_size = claims.groupby('object_id').max()['value'] + 1
     for s in range(n_sources):
-        honest.append(
-            pyro.sample(
-                f's_{s}',
-                dist.Bernoulli(logits=pyro.param(
-                    f'beta_s_{s}',
-                    init_tensor=_draw_log_from_open_zero_and_one()))))
-    # creat hidden truth rv for each object m
-    hidden_truth = []
+        # honest source rv
+        pyro.sample(
+            f's_{s}',
+            dist.Bernoulli(
+                logits=pyro.param(f'beta_s_{s}', init_tensor=_draw_logits())))
+
     for m in range(n_objects):
-        _, domain_size = observation[m].shape
-        if domain_size < 2:
-            print(m)
-        assert domain_size >= 2
-        hidden_truth.append(
-            pyro.sample(
-                f'y_{m}',
-                dist.Categorical(
-                    logits=pyro.param(f'beta_m_{m}',
-                                      init_tensor=1 / domain_size *
-                                      torch.ones((domain_size, ))))))
+        # hidden truth
+        m_dist = 1 / domain_size[m] * torch.ones((domain_size[m], ))
+        pyro.sample(
+            f'y_{m}',
+            dist.Categorical(logits=pyro.param(f'beta_m_{m}',
+                                               init_tensor=torch.log(m_dist))))
 
 
-def make_observation_mapper(observation, mask):
+def make_observation_mapper(claims):
     """Make a dictionary of observation.
 
     Parameters
     ----------
-    observation: dict
-        a dictionary of observation (o->[b_sc]). See build_observation() for
-        details.
-
-    mask: np.array
-        a 2D array of shape (#sources, #objects)
+    claims: pd.DataFrame
        
     Returns
     -------
@@ -202,24 +113,15 @@ def make_observation_mapper(observation, mask):
         an dictionary that map rv to their observed value
     """
     observation_mapper = dict()
-    # S and M
-    n_sources, n_objects = mask.shape
-    for m in range(n_objects):
-        assertion = np.argmax(observation[m], axis=1)
-        for s in range(n_sources):
-            if mask[s, m]:
-                # claims made by s about m
-                observation_mapper[f'b_{s}_{m}'] = torch.tensor(assertion[s])
+
+    for _, c in claims.iterrows():
+        m = c['object_id']
+        s = c['source_id']
+        observation_mapper[f'b_{s}_{m}'] = torch.tensor(c['value'])
     return observation_mapper
 
 
-def bvi(model,
-        guide,
-        observation,
-        mask,
-        epochs=10,
-        learning_rate=1e-5,
-        num_samples=1):
+def bvi(model, guide, claims, epochs=10, learning_rate=1e-5, num_samples=1):
     """perform blackbox mean field variational inference on simpleLCA.
     
     This methods take a simpleLCA model as input and perform blackbox variational
@@ -232,7 +134,7 @@ def bvi(model,
     The underlying truth value of an object could be computed as the mode of this
     distribution.
     """
-    data = make_observation_mapper(observation, mask)
+    data = make_observation_mapper(claims)
     conditioned_lca = pyro.condition(lca_model, data=data)
     pyro.clear_param_store()  # is it needed?
     svi = pyro.infer.SVI(model=conditioned_lca,
@@ -242,13 +144,13 @@ def bvi(model,
                          num_samples=num_samples)
     losses = []
     for t in range(epochs):
-        cur_loss = svi.step(observation, mask)
+        cur_loss = svi.step(claims)
         losses.append(cur_loss)
         print(f'current loss - {cur_loss}')
     return losses
 
 
-def _draw_log_from_open_zero_and_one():
+def _draw_logits():
     return torch.log(
         torch.distributions.Dirichlet(torch.tensor([0.5, 0.5])).sample()[0])
 
@@ -278,13 +180,12 @@ def discover_trusted_source(posteriors, reliability_threshold=0.8):
 
 
 def discover_truths(posteriors):
-
     object_id = []
     value = []
     for k, v in posteriors.items():
         if k.startswith('beta_m'):
             object_id.append(int(k.split('_')[2]))
-            value.append(int(torch.argmax(v).numpy()))
+            value.append(int(torch.argmax(torch.exp(v)).numpy()))
     return pd.DataFrame(data={'object_id': object_id, 'value': value})
 
 
