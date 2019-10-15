@@ -83,7 +83,7 @@ def build_observation(claims):
     return observation
 
 
-def lca_model(observation, mask):
+def lca_model(claims):
     """Build a Latent Credibility Analysis (LCA).
    
     A LCA model represents a joint distribution p(Y, H, X), where
@@ -110,7 +110,10 @@ def lca_model(observation, mask):
     mask: np.array
         a 2D array of shape (#sources, #objects)
     """
-    n_sources, n_objects = mask.shape
+    problem_sizes = claims.nunique()
+    n_sources = problem_sizes['source_id']
+    n_objects = problem_sizes['object_id']
+    domain_size = claims.groupby('object_id').max()['value'] + 1
     # create honest rv, H_s, for each sources
     honest = []
     for s in range(n_sources):
@@ -123,23 +126,20 @@ def lca_model(observation, mask):
     # creat hidden truth rv for each object m
     hidden_truth = []
     for m in range(n_objects):
-        _, domain_size = observation[m].shape
         hidden_truth.append(
             pyro.sample(
                 f'y_{m}',
-                dist.Categorical(logits=pyro.param(
-                    f'theta_m_{m}', init_tensor=torch.ones((domain_size, ))))))
-    for m in range(n_objects):
+                dist.Categorical(logits=pyro.param(f'theta_m_{m}',
+                                                   init_tensor=torch.ones((
+                                                       domain_size[m], ))))))
+    for _, c in claims.iterrows():
+        m = c['object_id']
         y_m = hidden_truth[m]
-        _, domain_size = observation[m].shape
-        assert domain_size >= 2
-        for s in range(n_sources):
-            if mask[s, m]:
-                logits = (1 - torch.exp(
-                    pyro.param(f'theta_s_{s}'))) / domain_size * torch.ones(
-                        (domain_size, ))
-                logits[y_m] = pyro.param(f'theta_s_{s}')
-                pyro.sample(f'b_{s}_{m}', dist.Categorical(probs=logits))
+        logits = (1 - torch.exp(
+            pyro.param(f'theta_s_{s}'))) / domain_size[m] * torch.ones(
+                (domain_size[m], ))  # verify this init
+        logits[y_m] = pyro.param(f'theta_s_{s}')
+        pyro.sample(f'b_{s}_{m}', dist.Categorical(probs=logits))
 
 
 def lca_guide(observation, mask):
