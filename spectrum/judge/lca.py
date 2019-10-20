@@ -37,7 +37,7 @@ def lca_model(claims):
         honest.append(
             pyro.sample(
                 f's_{s}',
-                dist.Bernoulli(
+                dist.Categorical(
                     probs=pyro.param(f'theta_s_{s}',
                                      init_tensor=_draw_probs(),
                                      constraint=constraints.simplex))))
@@ -60,18 +60,15 @@ def lca_model(claims):
         y_m = hidden_truth[m]
         probs = _build_obj_probs_from_src_honest(pyro.param(f'theta_s_{s}'),
                                                  domain_size[m], y_m)
-        pyro.sample(f'b_{s}_{m}', dist.Categorical(probs=probs))
+        pyro.sample(f'b_{s}_{c}', dist.Categorical(probs=probs))
 
 
 def _build_obj_probs_from_src_honest(src_prob, obj_domain_size, truth):
+    src_prob = src_prob[1]
     obj_probs = torch.ones((obj_domain_size, ))
     obj_probs *= (1 - src_prob) / (obj_domain_size - 1)
     obj_probs[truth] = src_prob
     return obj_probs
-
-
-# def _build_obj_logits_from_src_honest(*args):
-#     return torch.log(_build_obj_probs_from_src_honest(*args))
 
 
 def lca_guide(claims):
@@ -80,7 +77,7 @@ def lca_guide(claims):
     A guide is an approximation of the real posterior distribution p(z|D), 
     where z represents hidden variables and D is a training dataset.
     A guide is needed to perform variational inference.
-    
+
     Parameters
     ----------
     claims: pd.DataFrame
@@ -94,9 +91,9 @@ def lca_guide(claims):
         # honest source rv
         pyro.sample(
             f's_{s}',
-            dist.Bernoulli(probs=pyro.param(f'beta_s_{s}',
-                                            init_tensor=_draw_probs(),
-                                            constraint=constraints.simplex)))
+            dist.Categorical(probs=pyro.param(f'beta_s_{s}',
+                                              init_tensor=_draw_probs(),
+                                              constraint=constraints.simplex)))
 
     for m in pyro.plate('objects', size=n_objects):
         # hidden truth
@@ -120,21 +117,20 @@ def make_observation_mapper(claims):
         an dictionary that map rv to their observed value
     """
     observation_mapper = dict()
-
-    for _, c in claims.iterrows():
-        m = c['object_id']
-        s = c['source_id']
-        observation_mapper[f'b_{s}_{m}'] = torch.tensor(c['value'])
+    for c in claims.index:
+        s = claims.iloc[c]['source_id']
+        observation_mapper[f'b_{s}_{c}'] = torch.tensor(
+            claims.iloc[c]['value'])
     return observation_mapper
 
 
 def bvi(model, guide, claims, learning_rate=1e-5, num_samples=1):
     """perform blackbox mean field variational inference on simpleLCA.
-    
+
     This methods take a simpleLCA model as input and perform blackbox variational
     inference, and returns a list of posterior distributions of hidden truth and source
     reliability. 
-    
+
     Concretely, if s is a source then posterior(s) is the probability of s being honest.
     And if o is an object, or more correctly, is a random variable that has the support as
     the domain of an object, then posterior(o) is the distribution over these support.
@@ -169,7 +165,7 @@ def fit(svi, claims, epochs=10):
 
 
 def _draw_probs():
-    return torch.distributions.Dirichlet(torch.tensor([0.5, 0.5])).sample()[0]
+    return torch.distributions.Dirichlet(torch.tensor([0.5, 0.5])).sample()
 
 
 def discover_trusted_source(posteriors, reliability_threshold=0.8):
@@ -202,7 +198,7 @@ def discover_truths(posteriors):
     for k, v in posteriors.items():
         if k.startswith('beta_m'):
             object_id.append(int(k.split('_')[2]))
-            value.append(int(torch.argmax(torch.exp(v)).numpy()))
+            value.append(int(torch.argmax(v).numpy()))
     return pd.DataFrame(data={'object_id': object_id, 'value': value})
 
 
