@@ -33,7 +33,7 @@ def lca_model(claims):
     domain_size = claims.groupby('object_id').max()['value'] + 1
     # create honest rv, H_s, for each sources
     honest = []
-    for s in range(n_sources):
+    for s in pyro.plate(name='sources', size=n_sources):
         honest.append(
             pyro.sample(
                 f's_{s}',
@@ -42,7 +42,7 @@ def lca_model(claims):
 
     # creat hidden truth rv for each object m
     hidden_truth = []
-    for m in range(n_objects):
+    for m in pyro.plate(name='objects', size=n_objects):
         hidden_truth.append(
             pyro.sample(
                 f'y_{m}',
@@ -50,9 +50,9 @@ def lca_model(claims):
                                                    init_tensor=torch.ones((
                                                        domain_size[m], ))))))
 
-    for _, c in claims.iterrows():
-        m = c['object_id']
-        s = c['source_id']
+    for c in pyro.plate(name='claims', size=len(claims.index)):
+        m = claims.iloc[c]['object_id']
+        s = claims.iloc[c]['source_id']
         y_m = hidden_truth[m]
         logits = build_obj_logits_from_src_honest(pyro.param(f'theta_s_{s}'),
                                                   domain_size[m], y_m)
@@ -84,14 +84,14 @@ def lca_guide(claims):
     n_sources = max_ids['source_id'] + 1
     n_objects = max_ids['object_id'] + 1
     domain_size = claims.groupby('object_id').max()['value'] + 1
-    for s in range(n_sources):
+    for s in pyro.plate('sources', size=n_sources):
         # honest source rv
         pyro.sample(
             f's_{s}',
             dist.Bernoulli(
                 logits=pyro.param(f'beta_s_{s}', init_tensor=_draw_logits())))
 
-    for m in range(n_objects):
+    for m in pyro.plate('objects', size=n_objects):
         # hidden truth
         m_dist = 1 / domain_size[m] * torch.ones((domain_size[m], ))
         pyro.sample(
@@ -140,7 +140,7 @@ def bvi(model, guide, claims, epochs=10, learning_rate=1e-5, num_samples=1):
     svi = pyro.infer.SVI(model=conditioned_lca,
                          guide=lca_guide,
                          optim=pyro.optim.Adam({"lr": learning_rate}),
-                         loss=pyro.infer.Trace_ELBO(),
+                         loss=pyro.infer.TraceGraph_ELBO(),
                          num_samples=num_samples)
     losses = []
     for t in range(epochs):
