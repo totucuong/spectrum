@@ -1,4 +1,4 @@
-from spectrum.judge.lca import build_mask, build_observation
+from spectrum.judge.lca import make_observation_mapper
 
 import pandas as pd
 
@@ -7,6 +7,12 @@ claims['source_id'] = [0, 0, 1]
 claims['object_id'] = [0, 1, 1]
 claims['value'] = [0, 1, 0]
 claims = pd.DataFrame(data=claims)
+
+
+def test_make_observation():
+    mapper = make_observation_mapper(claims)
+    assert len(mapper.keys()) == len(claims)
+
 
 # def test_build_mask():
 #     W = build_mask(claims)

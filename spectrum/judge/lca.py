@@ -1,8 +1,8 @@
-import numpy as np
 import pandas as pd
 import pyro
 import pyro.distributions as dist
 import torch
+from torch.distributions import constraints
 
 
 def lca_model(claims):
@@ -33,39 +33,42 @@ def lca_model(claims):
     domain_size = claims.groupby('object_id').max()['value'] + 1
     # create honest rv, H_s, for each sources
     honest = []
-    for s in range(n_sources):
+    for s in pyro.plate(name='sources', size=n_sources):
         honest.append(
             pyro.sample(
                 f's_{s}',
-                dist.Bernoulli(logits=pyro.param(f'theta_s_{s}',
-                                                 init_tensor=_draw_logits()))))
+                dist.Categorical(
+                    probs=pyro.param(f'theta_s_{s}',
+                                     init_tensor=_draw_probs(),
+                                     constraint=constraints.simplex))))
 
     # creat hidden truth rv for each object m
     hidden_truth = []
-    for m in range(n_objects):
+    for m in pyro.plate(name='objects', size=n_objects):
         hidden_truth.append(
             pyro.sample(
                 f'y_{m}',
-                dist.Categorical(logits=pyro.param(f'theta_m_{m}',
-                                                   init_tensor=torch.ones((
-                                                       domain_size[m], ))))))
+                dist.Categorical(
+                    probs=pyro.param(f'theta_m_{m}',
+                                     init_tensor=torch.ones((
+                                         domain_size[m], )),
+                                     constraint=constraints.simplex))))
 
-    for _, c in claims.iterrows():
-        m = c['object_id']
-        s = c['source_id']
+    for c in pyro.plate(name='claims', size=len(claims.index)):
+        m = claims.iloc[c]['object_id']
+        s = claims.iloc[c]['source_id']
         y_m = hidden_truth[m]
-        logits = build_obj_logits_from_src_honest(pyro.param(f'theta_s_{s}'),
-                                                  domain_size[m], y_m)
-        pyro.sample(f'b_{s}_{m}', dist.Categorical(logits=logits))
+        probs = _build_obj_probs_from_src_honest(pyro.param(f'theta_s_{s}'),
+                                                 domain_size[m], y_m)
+        pyro.sample(f'b_{s}_{c}', dist.Categorical(probs=probs))
 
 
-def build_obj_logits_from_src_honest(src_logit, obj_domain_size, truth):
+def _build_obj_probs_from_src_honest(src_prob, obj_domain_size, truth):
+    src_prob = src_prob[1]
     obj_probs = torch.ones((obj_domain_size, ))
-    # probs for fake value
-    src_prob = torch.exp(src_logit)
     obj_probs *= (1 - src_prob) / (obj_domain_size - 1)
     obj_probs[truth] = src_prob
-    return torch.log(obj_probs)
+    return obj_probs
 
 
 def lca_guide(claims):
@@ -74,7 +77,7 @@ def lca_guide(claims):
     A guide is an approximation of the real posterior distribution p(z|D), 
     where z represents hidden variables and D is a training dataset.
     A guide is needed to perform variational inference.
-    
+
     Parameters
     ----------
     claims: pd.DataFrame
@@ -84,20 +87,21 @@ def lca_guide(claims):
     n_sources = max_ids['source_id'] + 1
     n_objects = max_ids['object_id'] + 1
     domain_size = claims.groupby('object_id').max()['value'] + 1
-    for s in range(n_sources):
+    for s in pyro.plate('sources', size=n_sources):
         # honest source rv
         pyro.sample(
             f's_{s}',
-            dist.Bernoulli(
-                logits=pyro.param(f'beta_s_{s}', init_tensor=_draw_logits())))
+            dist.Categorical(probs=pyro.param(f'beta_s_{s}',
+                                              init_tensor=_draw_probs(),
+                                              constraint=constraints.simplex)))
 
-    for m in range(n_objects):
+    for m in pyro.plate('objects', size=n_objects):
         # hidden truth
         m_dist = 1 / domain_size[m] * torch.ones((domain_size[m], ))
-        pyro.sample(
-            f'y_{m}',
-            dist.Categorical(logits=pyro.param(f'beta_m_{m}',
-                                               init_tensor=torch.log(m_dist))))
+        probs_m = pyro.param(f'beta_m_{m}',
+                             init_tensor=m_dist,
+                             constraint=constraints.simplex)
+        pyro.sample(f'y_{m}', dist.Categorical(probs=probs_m))
 
 
 def make_observation_mapper(claims):
@@ -113,21 +117,20 @@ def make_observation_mapper(claims):
         an dictionary that map rv to their observed value
     """
     observation_mapper = dict()
-
-    for _, c in claims.iterrows():
-        m = c['object_id']
-        s = c['source_id']
-        observation_mapper[f'b_{s}_{m}'] = torch.tensor(c['value'])
+    for c in claims.index:
+        s = claims.iloc[c]['source_id']
+        observation_mapper[f'b_{s}_{c}'] = torch.tensor(
+            claims.iloc[c]['value'])
     return observation_mapper
 
 
-def bvi(model, guide, claims, epochs=10, learning_rate=1e-5, num_samples=1):
+def bvi(model, guide, claims, learning_rate=1e-5, num_samples=1):
     """perform blackbox mean field variational inference on simpleLCA.
-    
+
     This methods take a simpleLCA model as input and perform blackbox variational
     inference, and returns a list of posterior distributions of hidden truth and source
     reliability. 
-    
+
     Concretely, if s is a source then posterior(s) is the probability of s being honest.
     And if o is an object, or more correctly, is a random variable that has the support as
     the domain of an object, then posterior(o) is the distribution over these support.
@@ -139,9 +142,16 @@ def bvi(model, guide, claims, epochs=10, learning_rate=1e-5, num_samples=1):
     pyro.clear_param_store()  # is it needed?
     svi = pyro.infer.SVI(model=conditioned_lca,
                          guide=lca_guide,
-                         optim=pyro.optim.Adam({"lr": learning_rate}),
-                         loss=pyro.infer.Trace_ELBO(),
+                         optim=pyro.optim.Adam({
+                             "lr": learning_rate,
+                             "betas": (0.90, 0.999)
+                         }),
+                         loss=pyro.infer.TraceGraph_ELBO(),
                          num_samples=num_samples)
+    return svi
+
+
+def fit(svi, claims, epochs=10):
     losses = []
     for t in range(epochs):
         cur_loss = svi.step(claims)
@@ -150,9 +160,12 @@ def bvi(model, guide, claims, epochs=10, learning_rate=1e-5, num_samples=1):
     return losses
 
 
-def _draw_logits():
-    return torch.log(
-        torch.distributions.Dirichlet(torch.tensor([0.5, 0.5])).sample()[0])
+# def _draw_logits():
+#     return torch.log(_draw_probs())
+
+
+def _draw_probs():
+    return torch.distributions.Dirichlet(torch.tensor([0.5, 0.5])).sample()
 
 
 def discover_trusted_source(posteriors, reliability_threshold=0.8):
@@ -185,7 +198,7 @@ def discover_truths(posteriors):
     for k, v in posteriors.items():
         if k.startswith('beta_m'):
             object_id.append(int(k.split('_')[2]))
-            value.append(int(torch.argmax(torch.exp(v)).numpy()))
+            value.append(int(torch.argmax(v).numpy()))
     return pd.DataFrame(data={'object_id': object_id, 'value': value})
 
 
