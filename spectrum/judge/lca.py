@@ -48,11 +48,11 @@ def lca_model(claims):
         hidden_truth.append(
             pyro.sample(
                 f'y_{m}',
-                dist.Categorical(
-                    probs=pyro.param(f'theta_m_{m}',
-                                     init_tensor=torch.ones((
-                                         domain_size[m], )),
-                                     constraint=constraints.simplex))))
+                dist.Categorical(probs=pyro.param(
+                    f'theta_m_{m}',
+                    init_tensor=torch.ones((domain_size[m], )) /
+                    domain_size[m],
+                    constraint=constraints.simplex))))
 
     for c in pyro.plate(name='claims', size=len(claims.index)):
         m = claims.iloc[c]['object_id']
