@@ -137,14 +137,30 @@ def sim_trust(t1, t2):
     return 1 - cosine(t1, t2)
 
 
+@dataclass
+class TruthFinderAuxiliaryData:
+    imp_func = imp
+    initial_trust = 0.5
+    similarity_threshold = (1 - 1e-05)
+    dampening_factor = 0.3
+    verbose = True
+
+    def to_dict(self):
+        return {
+            'imp_func': self.imp_func,
+            'initial_trust': self.initial_trust,
+            'similarity_threshold': self.similarity_threshold,
+            'dampening_factor': self.dampening_factor,
+            'verbose': self.verbose
+        }
+
+
 class TruthFinder(TruthDiscoverer):
     def discover(self, claims, auxiliary_data=None):
-        auxiliary_data = dict(imp_func=imp,
-                              initial_trust=0.5,
-                              similarity_threshold=(1 - 1e-05),
-                              dampening_factor=0.3,
-                              verbose=True)
-        return self._truthfinder(claims, **auxiliary_data)
+        if auxiliary_data is None:
+            auxiliary_data = TruthFinderAuxiliaryData()
+
+        return self._truthfinder(claims, **auxiliary_data.to_dict())
 
     def _truthfinder(self, claims, imp_func, initial_trust,
                      similarity_threshold, dampening_factor, verbose):
@@ -208,19 +224,19 @@ class TruthFinder(TruthDiscoverer):
 
 def compute_truth(trust, c_df, dampening_factor):
     """compute truth (confidence) of fact from source trust score
-    
+
     truth_score(f) = sum_{w in W(f)}(trust_score(w)), where W(f) is the set of all sources provides f.
-    
+
     It helps to notice that a fact is identified by 2-tuple (object_id, value)
-    
+
     Parameters
     ----------
     trust: np.array
         an array of source trustworthiness
-        
+
     c_df: pd.DataFrame
         a data frame that has columns [source_id, object_id, value]
-        
+
     Returns
     -------
     truth: pd.Series
@@ -237,19 +253,19 @@ def compute_truth(trust, c_df, dampening_factor):
 
 def compute_trust(truth, c_df):
     """compute source trustworhiness from confidence of facts
-    
+
     trust(w) = average_of(truth(f)) over facts provided by w
-    
+
     Note: If a source provides only one single fact then eventually its trust probability will be 1. 
-    
+
     Parameters
     ----------
     truth: pd.Series
         a panda series with index (object_id, value)
-        
+
     c_df: pd.DataFrame
         a data frame that has columns [source_id, object_id, value]
-        
+
     Returns
     -------
     trust: np.array

@@ -5,7 +5,7 @@ import numpy as np
 
 class MajorityVoting(TruthDiscoverer):
     """Find truths by majority voting."""
-    def discover(self, claims):
+    def discover(self, claims, auxiliary_data=None):
         return (self._majority_vote(claims), None)
 
     def _majority_vote(self, claims):

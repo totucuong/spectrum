@@ -5,7 +5,7 @@ class TruthDiscoverer(ABC):
     """Truth discovery algorithm interface.
     """
     @abstractmethod
-    def discover(self, claims):
+    def discover(self, claims, auxiliary_data=None):
         """Discover true claims and data source reliability
 
         Parameters
