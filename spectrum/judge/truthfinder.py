@@ -1,6 +1,9 @@
 import numpy as np
 import pandas as pd
+from dataclasses import dataclass
+
 from scipy.spatial.distance import cosine
+from .truthdiscoverer import TruthDiscoverer
 
 
 def adjust(truth_score):
@@ -23,8 +26,8 @@ def adjust(truth_score):
     truth_score_df.reset_index(inplace=True)
 
     # adjust
-    truth_score_df = truth_score_df.groupby(
-        'object_id').apply(lambda x: _adjust(x))
+    truth_score_df = truth_score_df.groupby('object_id').apply(
+        lambda x: _adjust(x))
 
     return truth_score_df.set_index(['object_id', 'value'])['score']
 
@@ -134,85 +137,106 @@ def sim_trust(t1, t2):
     return 1 - cosine(t1, t2)
 
 
-def truthfinder(claims,
-                imp_func=imp,
-                initial_trust=0.9,
-                similarity_threshold=(1 - 1e-05),
-                dampening_factor=0.3,
-                verbose=False):
-    """performs truth discovery using truthfinder
-    
-    TruthFinder works as follows
-    1. Initialize all source reliabilities to initial_t
-    2. While sim(t_prev, t_now) < threshold$:
-        - compute fact confidences
-        - compute website trustworthiness
-    
-    where t are the vector of all source reliabities and similarity function is the cosine similarity. 
-    
-    Parameters
-    ----------
-    claims: pd.DataFrame
-        a data frame that has columns [source_id, object_id, value]
-        
-    initial_trust: float
-        initial source trustworthiness. This value is in [0, 1]
-        
-    similarity_threshold: float
-        the threshold to determine the convergence of source trustworthiness.
-        
-    base_sim: float
-        This is to define imp
-        
-    Returns
-    -------
-    trust_df: pd.DataFrame
-    
-    truth_df: p.DataFrame
-    """
-    # compute metadata
-    c_df = claims[['source_id', 'object_id', 'value']].copy()
-    n_sources = c_df.source_id.nunique()
+@dataclass
+class TruthFinderAuxiliaryData:
+    imp_func = imp
+    initial_trust = 0.5
+    similarity_threshold = (1 - 1e-05)
+    dampening_factor = 0.3
+    verbose = True
 
-    # compute trust and truth
-    trust = initial_trust * np.ones(n_sources)
-    truth = None
-    while True:
-        truth = compute_truth(trust, c_df, dampening_factor)
-        trust_next = compute_trust(truth, c_df)
+    def to_dict(self):
+        return {
+            'imp_func': self.imp_func,
+            'initial_trust': self.initial_trust,
+            'similarity_threshold': self.similarity_threshold,
+            'dampening_factor': self.dampening_factor,
+            'verbose': self.verbose
+        }
 
-        if verbose:
-            print(f'trust similarity - {sim_trust(trust, trust_next)}')
 
-        if (sim_trust(trust, trust_next) > similarity_threshold):
-            trust = trust_next
-            break
-        else:
-            trust = trust_next
+class TruthFinder(TruthDiscoverer):
+    def discover(self, claims, auxiliary_data=None):
+        if auxiliary_data is None:
+            auxiliary_data = TruthFinderAuxiliaryData()
 
-    truth_df = pd.DataFrame(data=truth)
-    truth_df.reset_index(inplace=True)
-    truth_df = truth_df.rename(columns={'score': 'confidence'})
-    trust_df = pd.DataFrame(data=trust, columns=['trust_worthiness'])
-    trust_df.reset_index(inplace=True)
-    return trust_df, truth_df
+        return self._truthfinder(claims, **auxiliary_data.to_dict())
+
+    def _truthfinder(self, claims, imp_func, initial_trust,
+                     similarity_threshold, dampening_factor, verbose):
+        """performs truth discovery using truthfinder
+        
+        TruthFinder works as follows
+        1. Initialize all source reliabilities to initial_t
+        2. While sim(t_prev, t_now) < threshold$:
+            - compute fact confidences
+            - compute website trustworthiness
+        
+        where t are the vector of all source reliabities and similarity function is the cosine similarity. 
+        
+        Parameters
+        ----------
+        claims: pd.DataFrame
+            a data frame that has columns [source_id, object_id, value]
+            
+        initial_trust: float
+            initial source trustworthiness. This value is in [0, 1]
+            
+        similarity_threshold: float
+            the threshold to determine the convergence of source trustworthiness.
+            
+        base_sim: float
+            This is to define imp
+            
+        Returns
+        -------
+        trust_df: pd.DataFrame
+        
+        truth_df: p.DataFrame
+        """
+        # compute metadata
+        c_df = claims[['source_id', 'object_id', 'value']].copy()
+        n_sources = c_df.source_id.nunique()
+
+        # compute trust and truth
+        trust = initial_trust * np.ones(n_sources)
+        truth = None
+        while True:
+            truth = compute_truth(trust, c_df, dampening_factor)
+            trust_next = compute_trust(truth, c_df)
+
+            if verbose:
+                print(f'trust similarity - {sim_trust(trust, trust_next)}')
+
+            if (sim_trust(trust, trust_next) > similarity_threshold):
+                trust = trust_next
+                break
+            else:
+                trust = trust_next
+
+        truth_df = pd.DataFrame(data=truth)
+        truth_df.reset_index(inplace=True)
+        truth_df = truth_df.rename(columns={'score': 'confidence'})
+        trust_df = pd.DataFrame(data=trust, columns=['trust_worthiness'])
+        trust_df.reset_index(inplace=True)
+        return truth_df, trust_df
 
 
 def compute_truth(trust, c_df, dampening_factor):
     """compute truth (confidence) of fact from source trust score
-    
+
     truth_score(f) = sum_{w in W(f)}(trust_score(w)), where W(f) is the set of all sources provides f.
-    
+
     It helps to notice that a fact is identified by 2-tuple (object_id, value)
-    
+
     Parameters
     ----------
     trust: np.array
         an array of source trustworthiness
-        
+
     c_df: pd.DataFrame
         a data frame that has columns [source_id, object_id, value]
-        
+
     Returns
     -------
     truth: pd.Series
@@ -229,26 +253,26 @@ def compute_truth(trust, c_df, dampening_factor):
 
 def compute_trust(truth, c_df):
     """compute source trustworhiness from confidence of facts
-    
+
     trust(w) = average_of(truth(f)) over facts provided by w
-    
+
     Note: If a source provides only one single fact then eventually its trust probability will be 1. 
-    
+
     Parameters
     ----------
     truth: pd.Series
         a panda series with index (object_id, value)
-        
+
     c_df: pd.DataFrame
         a data frame that has columns [source_id, object_id, value]
-        
+
     Returns
     -------
     trust: np.array
         an array of source trust worthiness
     """
-    trust = c_df.groupby('source_id').apply(lambda x: _compute_trust(
-        x[['object_id', 'value']].values, truth))
+    trust = c_df.groupby('source_id').apply(
+        lambda x: _compute_trust(x[['object_id', 'value']].values, truth))
     return trust
 
 
