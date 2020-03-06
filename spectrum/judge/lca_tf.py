@@ -1,5 +1,6 @@
 import tensorflow as tf
 from tensorflow_probability import edward2 as ed
+from .utils import observe
 from .truthdiscoverer import TruthDiscoverer
 
 
@@ -32,18 +33,22 @@ class LCA(TruthDiscoverer):
             ed.Deterministic(loc=reliablity_score). For other methods, such as
             LCAs, we use ed.Categorical to model reliablities of data sources.
         """
-        self._initialize(claims)
+        self.claims = claims
+        self._initialize()
+        self.observation = self._make_observation()
+        self.observed_model = observe(self.model, self.observation)
+
         # peform black-box bvi
 
         truth = dict()
         trust = dict()
         return truth, trust
 
-    def _initialize(self, claims):
+    def _initialize(self):
         """create trainable variables as well as other truth discovery parameters
         """
         self.n_sources, self.n_objects, self.domain_sizes = self._compute_prob_desc(
-            claims)
+            self.claims)
 
         self.trainable_variables = []
 
@@ -85,19 +90,19 @@ class LCA(TruthDiscoverer):
         domain_sizes = claims.groupby('object_id').max()['value'] + 1
         return n_sources, n_objects, domain_sizes
 
-    def model(self, claims):
+    def _make_observation(self):
+        """make observations
+        """
+        observation = dict()
+        for c in self.claims.index:
+            observation[f'x_claim_{c}'] = self.claims.iloc[c]['value']
+        return observation
+
+    def model(self):
         """a generative model
 
         We assume each source if it asserts an object's value then it is the
         one and the only assumption about that object made by it.
-
-        Parameters
-        ----------
-        claims: pd.DataFrame
-            a data frame that has columns [source_id, object_id, value]
-
-        trainable_variables: list
-            a list of tf.Variable. These are model parameters.
         """
         # p_trust
         ed.Bernoulli(name=f'z_trusts', probs=self.honest_probs_p)
@@ -111,9 +116,9 @@ class LCA(TruthDiscoverer):
 
         # claims
         x_claims = []
-        for c in claims.index:
-            s = claims.iloc[c]['source_id']
-            m = claims.iloc[c]['object_id']
+        for c in self.claims.index:
+            s = self.claims.iloc[c]['source_id']
+            m = self.claims.iloc[c]['object_id']
             z_truth_m = z_truths[m]
             probs = self._build_claim_probs(self.honest_probs_p[s],
                                             self.domain_sizes[m],
@@ -128,7 +133,7 @@ class LCA(TruthDiscoverer):
 
         return probs
 
-    def mean_field_model(self, claims):
+    def mean_field_model(self):
         """a mean field varational model
         Parameters
         ----------
