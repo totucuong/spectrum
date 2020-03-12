@@ -50,12 +50,14 @@ class LCA(TruthDiscoverer):
         self.n_sources, self.n_objects, self.domain_sizes = self._compute_prob_desc(
             self.claims)
 
-        self.trainable_variables = []
+        # self.trainable_variables = []
+        self.latent_vars = []
+        self.model_vars = []
 
         # model's parameter
         self.honest_probs_p = tf.Variable(
             initial_value=tf.ones(self.n_sources) * 0.5, name='honest_probs_p')
-        self._register(self.honest_probs_p)
+        self._register(self.honest_probs_p, self.model_vars)
 
         self.object_probs_p = []
         for m in self.domain_sizes.index:
@@ -63,25 +65,25 @@ class LCA(TruthDiscoverer):
                 tf.Variable(initial_value=tf.ones(self.domain_sizes[m], ) /
                             self.domain_sizes[m],
                             name=f'truth_prob_{m}_p'))
-        self._register(self.object_probs_p)
+        self._register(self.object_probs_p, self.model_vars)
 
         # guide's parameter
         self.honest_probs_q = tf.Variable(
             initial_value=tf.ones(self.n_sources) * 0.5, name='honest_probs_q')
-        self._register(self.honest_probs_q)
+        self._register(self.honest_probs_q, self.latent_vars)
         self.object_probs_q = []
         for m in self.domain_sizes.index:
             self.object_probs_q.append(
                 tf.Variable(initial_value=tf.ones(self.domain_sizes[m], ) /
                             self.domain_sizes[m],
                             name=f'truth_prob_{m}_q'))
-        self._register(self.object_probs_q)
+        self._register(self.object_probs_q, self.latent_vars)
 
-    def _register(self, variable):
+    def _register(self, variable, collection):
         if isinstance(variable, list):
-            self.trainable_variables = self.trainable_variables + variable
+            collection.extend(variable)
         else:
-            self.trainable_variables.append(variable)
+            collection.append(variable)
 
     def _compute_prob_desc(self, claims):
         problem_sizes = claims.nunique()
