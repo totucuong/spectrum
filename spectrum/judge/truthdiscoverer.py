@@ -17,15 +17,15 @@ class TruthDiscoverer(ABC):
 
         Returns
         -------
-        truth: dict
-            a dictionary `{object_id, ed.RandomVariable}` mapping `object_id` to an `ed.RandomVariable`. In spectrum,
-            we model the uncertainty of truths using probability distribution, which is represented as a random variate
-            `ed.RandomVariable`.
-
         trust: dict
             a dictionary `{source_id, ed.RandomVariable}`. Some algorithm-based truth discovery method such as majority voting
             or Truth Finder, does not model source reliability using distribution, instead they output a reliablity score. We
             capture this situation using ed.Deterministic(loc=reliablity_score). For other methods, such as LCAs, we use ed.Categorical
             to model reliablities of data sources.
+            
+        truth: dict
+            a dictionary `{object_id, ed.RandomVariable}` mapping `object_id` to an `ed.RandomVariable`. In spectrum,
+            we model the uncertainty of truths using probability distribution, which is represented as a random variate
+            `ed.RandomVariable`.
         """
         raise NotImplementedError()

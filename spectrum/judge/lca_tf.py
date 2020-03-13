@@ -2,10 +2,20 @@ import tensorflow as tf
 from tensorflow_probability import edward2 as ed
 from .utils import observe
 from .truthdiscoverer import TruthDiscoverer
+from spectrum.inference.bbvi import BBVI
+from spectrum.inference.utils import compute_trust_and_truth
 
 
 class LCA(TruthDiscoverer):
-    def discover(self, claims, auxiliary_data=None):
+    def discover(self,
+                 claims,
+                 auxiliary_data=None,
+                 epochs=1,
+                 learning_rate=1e-4,
+                 report_every=1,
+                 n_samples=1,
+                 compute_variance=True,
+                 n_gradient_samples=5):
         """Discover true claims and data source reliability
 
         Parameters
@@ -17,14 +27,22 @@ class LCA(TruthDiscoverer):
             gender, diseases. It is of type `float` if it represents things
             such as sensor reading, etc.
 
+        auxiliary_data: dict
+            a dictionary of auxliary data of some sort.
+
+        n_samples: int
+        the number of samples to be used to estimate gradients of BBVI loss.
+
+        compute_variance: bool
+            if compute_variance=False then variance of score-function gradient estimator
+            is estimated at each epoch using n_gradient_samples.
+
+        n_gradient_samples: bool
+            the number of gradient estimation to be used when compute its variance. It will
+            be ignored if compute_variance=False. 
+
         Returns
         -------
-        truth: dict
-            a dictionary `{object_id, ed.RandomVariable}` mapping `object_id`
-            to an `ed.RandomVariable`. In spectrum, we model the uncertainty
-            of truths using probability distribution, which is represented as
-            a random variate `ed.RandomVariable`.
-
         trust: dict
             a dictionary `{source_id, ed.RandomVariable}`. Some algorithmic
             truth discovery method such as majority voting or Truth Finder,
@@ -32,17 +50,32 @@ class LCA(TruthDiscoverer):
             output a reliablity score. We capture this situation using
             ed.Deterministic(loc=reliablity_score). For other methods, such as
             LCAs, we use ed.Categorical to model reliablities of data sources.
+
+        truth: dict
+            a dictionary `{object_id, ed.RandomVariable}` mapping `object_id`
+            to an `ed.RandomVariable`. In spectrum, we model the uncertainty
+            of truths using probability distribution, which is represented as
+            a random variate `ed.RandomVariable`.
         """
-        self.claims = claims
+        self.claims = claims.copy()
         self._initialize()
         self.observation = self._make_observation()
         self.observed_model = observe(self.model, self.observation)
 
         # peform black-box bvi
+        self.bbvi = BBVI(p=self.observed_model,
+                         q=self.mean_field_model,
+                         p_vars=self.model_vars,
+                         q_vars=self.latent_vars,
+                         n_samples=n_samples,
+                         compute_variance=compute_variance,
+                         n_gradient_samples=n_gradient_samples)
 
-        truth = dict()
-        trust = dict()
-        return truth, trust
+        self.bbvi.train(epochs=epochs,
+                        learning_rate=learning_rate,
+                        report_every=report_every)
+
+        return compute_trust_and_truth(self.mean_field_model)
 
     def _initialize(self):
         """create trainable variables as well as other truth discovery parameters
