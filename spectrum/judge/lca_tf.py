@@ -47,37 +47,45 @@ class LCA(TruthDiscoverer):
     def _initialize(self):
         """create trainable variables as well as other truth discovery parameters
         """
+        print('initialize...')
         self.n_sources, self.n_objects, self.domain_sizes = self._compute_prob_desc(
             self.claims)
+
+        print('number of sources: ', self.n_sources)
+        print('number of objects: ', self.n_objects)
 
         # self.trainable_variables = []
         self.latent_vars = []
         self.model_vars = []
 
+        print('initialize model parameters....')
         # model's parameter
-        self.honest_probs_p = tf.Variable(
-            initial_value=tf.ones(self.n_sources) * 0.5, name='honest_probs_p')
-        self._register(self.honest_probs_p, self.model_vars)
+        self.honest_logits_p = tf.Variable(initial_value=tf.random.uniform(
+            shape=[self.n_sources], minval=-2, maxval=2),
+                                           name='honest_logits_p')
+        self._register(self.honest_logits_p, self.model_vars)
 
-        self.object_probs_p = []
+        self.object_logits_p = []
         for m in self.domain_sizes.index:
-            self.object_probs_p.append(
-                tf.Variable(initial_value=tf.ones(self.domain_sizes[m], ) /
-                            self.domain_sizes[m],
-                            name=f'truth_prob_{m}_p'))
-        self._register(self.object_probs_p, self.model_vars)
+            self.object_logits_p.append(
+                tf.Variable(initial_value=tf.random.uniform(
+                    shape=[self.domain_sizes[m]], minval=-2, maxval=2),
+                            name=f'truth_logits_{m}_p'))
+        self._register(self.object_logits_p, self.model_vars)
 
+        print('initialize guide parameters')
         # guide's parameter
-        self.honest_probs_q = tf.Variable(
-            initial_value=tf.ones(self.n_sources) * 0.5, name='honest_probs_q')
-        self._register(self.honest_probs_q, self.latent_vars)
-        self.object_probs_q = []
+        self.honest_logits_q = tf.Variable(initial_value=tf.random.uniform(
+            shape=[self.n_sources], minval=-2, maxval=2),
+                                           name='honest_logits_q')
+        self._register(self.honest_logits_q, self.latent_vars)
+        self.object_logits_q = []
         for m in self.domain_sizes.index:
-            self.object_probs_q.append(
-                tf.Variable(initial_value=tf.ones(self.domain_sizes[m], ) /
-                            self.domain_sizes[m],
-                            name=f'truth_prob_{m}_q'))
-        self._register(self.object_probs_q, self.latent_vars)
+            self.object_logits_q.append(
+                tf.Variable(initial_value=tf.random.uniform(
+                    shape=[self.domain_sizes[m]], minval=-2, maxval=2),
+                            name=f'truth_logits_{m}_q'))
+        self._register(self.object_logits_q, self.latent_vars)
 
     def _register(self, variable, collection):
         if isinstance(variable, list):
@@ -107,14 +115,15 @@ class LCA(TruthDiscoverer):
         one and the only assumption about that object made by it.
         """
         # p_trust
-        ed.Bernoulli(name=f'z_trusts', probs=self.honest_probs_p)
+        ed.Bernoulli(name=f'z_trusts', logits=self.honest_logits_p)
 
         # p_truth
         z_truths = []
         for m in self.domain_sizes.index:
             z_truths.append(
                 ed.Categorical(name=f'z_truth_{m}',
-                               probs=self.object_probs_p[m]))
+                               logits=tf.math.log_softmax(
+                                   self.object_logits_p[m])))
 
         # claims
         x_claims = []
@@ -122,9 +131,9 @@ class LCA(TruthDiscoverer):
             s = self.claims.iloc[c]['source_id']
             m = self.claims.iloc[c]['object_id']
             z_truth_m = z_truths[m]
-            probs = self._build_claim_probs(self.honest_probs_p[s],
-                                            self.domain_sizes[m],
-                                            z_truth_m.value)
+            probs = self._build_claim_probs(
+                tf.math.sigmoid(self.honest_logits_p[s]), self.domain_sizes[m],
+                z_truth_m.value)
             x_claims.append(ed.Categorical(name=f'x_claim_{c}', probs=probs))
 
     def _build_claim_probs(self, honest_prob, domain_size, truth):
@@ -148,8 +157,10 @@ class LCA(TruthDiscoverer):
             a list of tf.Variable. These are variational model parameters.
         """
         # q_trust
-        ed.Bernoulli(name=f'z_trusts', probs=self.honest_probs_q)
+        ed.Bernoulli(name=f'z_trusts',
+                     logits=tf.math.sigmoid(self.honest_logits_q))
 
         # q_truth
         for m in self.domain_sizes.index:
-            ed.Categorical(name=f'z_truth_{m}', probs=self.object_probs_q[m])
+            ed.Categorical(name=f'z_truth_{m}',
+                           logits=tf.math.log_softmax(self.object_logits_q[m]))

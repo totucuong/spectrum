@@ -1,6 +1,8 @@
 from tensorflow_probability import edward2 as ed
 import tensorflow as tf
 
+from .utils import flatten_gradients, compute_gradient_variance
+
 
 class BBVI:
     """Implement black-box variational inference using score function.
@@ -22,6 +24,14 @@ class BBVI:
 
     n_samples: int
         the number of samples to be used to estimate gradients of BBVI loss.
+
+    compute_variance: bool
+        if compute_variance=False then variance of score-function gradient estimator
+        is estimated at each epoch using n_gradient_samples.
+
+    n_gradient_samples: bool
+        the number of gradient estimation to be used when compute its variance. It will
+        be ignored if compute_variance=False.
     """
     def __init__(self,
                  p,
@@ -30,7 +40,7 @@ class BBVI:
                  q_vars,
                  n_samples,
                  compute_variance=False,
-                 n_gradient_sample=100):
+                 n_gradient_samples=5):
         self.p = p
         self.q = q
         self.p_vars = p_vars
@@ -38,15 +48,19 @@ class BBVI:
         self.n_samples = n_samples
         self.train_loss = []
         self.compute_variance = compute_variance
+        self.gradient_variance = []
+        self.n_gradient_samples = n_gradient_samples
 
-    def train(self, epochs=1, learning_rate=1e-4):
+    def train(self, epochs=1, learning_rate=1e-4, report_every=1):
         optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate,
                                              beta_1=0.9,
                                              beta_2=0.999)
         for epoch in range(epochs):
+            if self.compute_variance:
+                self.gradient_variance.append(self.compute_gradient_variance())
             loss, grads_and_vars = self._bbvi_step()
             self.train_loss.append(loss.numpy())
-            if epoch % 100 == 0:
+            if epoch % report_every == 0:
                 print(f'iteration {epoch} -  loss {loss.numpy()}')
             optimizer.apply_gradients(grads_and_vars)
 
@@ -88,6 +102,15 @@ class BBVI:
             zip(p_grads, self.p_vars))
 
         return loss, grads_and_vars
+
+    def compute_gradient_variance(self):
+        """compute gradient variance"""
+        grads = []
+        for i in range(self.n_gradient_samples):
+            _, grads_and_vars = self._bbvi_step()
+            grads.append(flatten_gradients(grads_and_vars))
+        grads = tf.stack(grads)
+        return compute_gradient_variance(grads)
 
 
 def sample(n_samples, model, *args, **kwargs):
