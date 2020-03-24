@@ -52,6 +52,7 @@ class BBVI:
         self.n_gradient_samples = n_gradient_samples
 
     def train(self, epochs=1, learning_rate=1e-4, report_every=1):
+        print('truth discovery on the way...')
         optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate,
                                              beta_1=0.9,
                                              beta_2=0.999)
