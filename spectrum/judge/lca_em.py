@@ -36,6 +36,13 @@ class LCA_EM:
         self.weight = self.compute_weight_matrix()
         self.n_sources, self.n_objects, self.domain_size = self._compute_prob_desc(
         )
+        # posterior p(o|X,\theta_old), o is m in the paper.
+        self.posterior = dict()
+        # prior p(o)
+        self.prior = dict()
+        for o in range(self.n_objects):
+            self.prior[o] = np.ones(
+                shape=(self.domain_size[o], )) / self.domain_size[o]
 
         # model parameters, source honesty
         self.theta_old = 0.5 * np.ones(shape=(self.n_sources, ))
@@ -74,7 +81,69 @@ class LCA_EM:
         return self._compute_trust(), self._compute_truth()
 
     def _e_step(self):
-        pass
+        for o in range(self.n_objects):
+            joint_prob = self._compute_joint(o)
+            self.posterior[o] = joint_prob / np.sum(joint_prob)
+
+    def _compute_joint(self, o_id):
+        """compute p(o,B|theta_old)
+
+        In the paper this is p(ym, X|theta_old).
+
+        Parameters
+        ----------
+        o_id: int
+            object id
+        Returns
+        -------
+        p(o,B|theta_old): np.array
+            joint distribution of object and data.
+        """
+        responsibility = np.ones(shape=(self.domain_size[o_id], ))
+        for v in range(len(responsibility)):
+            responsibility[v] = self.compute_responsibility(o_id, v)
+        joint_prob = self.prior[o_id] * responsibility
+        return joint_prob
+
+    def compute_responsibility(self, o_id, v):
+        """compute responsibility of data sources when making assertion.
+
+        Responsibility of data sources with respect to value v on the domain
+        of object o_id is defined as
+            r = prod_{s}r_{s,v}
+
+        where
+            r_{s,v} = (theta_s**b_{s,v} * \prod_{c!=v}[(1-theta_s)/(|o|-1)]**b_{s,c})**w_so
+
+        Parameters
+        ----------
+        o_id: int
+            object id, i.e., m
+
+        v: int
+            a value on the object's domain
+
+        Returns
+        -------
+        resp: float
+            responsiblity of data sources with respect to the value v of
+            object o_id.
+        """
+        resp = np.ones(shape=(self.n_sources, ))
+        for s_id in range(resp):
+            if self.weight[s_id][
+                    o_id] == 1:  # weight=0 no need for computation
+                if self.get_value(s_id, o_id) == v:
+                    resp[s_id] = self.theta_old[s_id]
+                else:
+                    resp[s_id] = (1 - self.theta_old[s_id]) / (
+                        self.domain_size[o_id])
+        return np.prod(resp)
+
+    def get_value(self, s_id, o_id):
+        mask = (self.claims.source_id == s_id) & (
+            self.claims.object_id == o_id)
+        return self.claims[mask].value.values[0]
 
     def _m_step(self):
         pass
@@ -86,16 +155,16 @@ class LCA_EM:
         return dict()
 
     def compute_weight_matrix(self):
-        """compute weight matrix weight = [w_sm]that is is used to train
+        """compute weight matrix weight = [w_so]that is is used to train
 
         s: index source. s is source_id
-        m: index mutual execlusive set of claims, e.g. "Claimed Birth Years of Barack Obama". m is object_id.
+        o: index mutual execlusive set of claims, e.g. "Claimed Birth Years of Barack Obama". m is object_id.
 
         Returns
         -------
         weight: np.ndarray
-            a 2D matrix of shape (S,C) that represents observation.
-            S is the number of data sources, C is the number of claims.
+            a 2D matrix of shape (S,O) that represents observation.
+            S is the number of data sources, O is the number of objects
         """
 
         W = self.claims[['source_id', 'object_id',
