@@ -29,10 +29,17 @@ class LCA_EM:
         The default value is None.
     """
     def __init__(self, claims, auxiliary_data=None):
+        # setup book keeping data structures
         self.claims = claims.copy()
         self.claims['claim_id'] = np.arange(0, len(claims))
         self.observation = self.compute_observation_matrix()
         self.weight = self.compute_weight_matrix()
+        self.n_sources, self.n_objects, self.domain_size = self._compute_prob_desc(
+        )
+
+        # model parameters, source honesty
+        self.theta_old = 0.5 * np.ones(shape=(self.n_sources, ))
+        self.theta_new = 0.99 * np.ones(shape=(self.n_sources, ))
 
     def discover(self, alpha=1e-4):
         """Discover true claims and data source reliability
@@ -61,13 +68,22 @@ class LCA_EM:
             of truths using probability distribution, which is represented as
             a random variate `ed.RandomVariable`.
         """
-        pass
+        while (np.linalg.norm(self.theta_old - self.theta_new, ord=2) > alpha):
+            self._e_step()
+            self._m_step()
+        return self._compute_trust(), self._compute_truth()
 
     def _e_step(self):
         pass
 
     def _m_step(self):
         pass
+
+    def _compute_trust(self):
+        return dict()
+
+    def _comptue_truth(self):
+        return dict()
 
     def compute_weight_matrix(self):
         """compute weight matrix weight = [w_sm]that is is used to train
@@ -107,3 +123,24 @@ class LCA_EM:
                               values='value')
         B.fillna(-1, inplace=True)
         return B.values
+
+    def _compute_prob_desc(self):
+        """compute statistics of a given truth discovery problem.
+
+        Returns
+        -------
+        n_sources: int
+            number of data sources
+
+        n_objects: int
+            number of objects
+
+        domain_size: dict
+            domain_size[object_id] is the number of unique values of object
+            object_id, i.e., |m| in the original paper.
+        """
+        problem_sizes = self.claims.nunique()
+        n_sources = problem_sizes['source_id']
+        n_objects = problem_sizes['object_id']
+        domain_size = self.claims.groupby('object_id').max()['value'] + 1
+        return n_sources, n_objects, domain_size
