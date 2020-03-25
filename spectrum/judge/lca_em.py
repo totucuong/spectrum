@@ -94,7 +94,8 @@ class LCA_EM:
     def compute_observation_matrix(self):
         """compute observation matrix B.
 
-        B[source_id, claim_id] = value
+        B[source_id, claim_id] = value. When source source_id does not
+        make claim claim_id then B[source_idd, claim_id] = -1.
 
         Returns
         -------
