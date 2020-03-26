@@ -1,4 +1,5 @@
 from .truthdiscoverer import TruthDiscoverer
+from tensorflow_probability import edward2 as ed
 import numpy as np
 
 
@@ -76,16 +77,29 @@ class LCA_EM:
             a random variate `ed.RandomVariable`.
         """
         while (np.linalg.norm(self.theta_old - self.theta_new, ord=2) > alpha):
-            self._e_step()
-            self._m_step()
+            self.e_step()
+            self.m_step()
+            self.theta_old = self.theta_new
         return self._compute_trust(), self._compute_truth()
 
-    def _e_step(self):
+    def e_step(self):
+        """compute posterior distribution of truths."""
         for o in range(self.n_objects):
-            joint_prob = self._compute_joint(o)
+            joint_prob = self.compute_joint(o)
             self.posterior[o] = joint_prob / np.sum(joint_prob)
 
-    def _compute_joint(self, o_id):
+    def m_step(self):
+        """update data source honest."""
+        for s in range(self.n_sources):
+            number_of_objects = self.weight[s].sum()  # could be faster
+            honest = 0.
+            for o in range(self.n_objects):
+                for v in range(self.domain_size[o]):
+                    mask = self.weight[s][o] * (self.get_value(s, o) == v)
+                    honest = honest + self.posterior[o][v] * mask
+            self.theta_new[s] = honest / number_of_objects
+
+    def compute_joint(self, o_id):
         """compute p(o,B|theta_old)
 
         In the paper this is p(ym, X|theta_old).
@@ -130,7 +144,7 @@ class LCA_EM:
             object o_id.
         """
         resp = np.ones(shape=(self.n_sources, ))
-        for s_id in range(resp):
+        for s_id in range(self.n_sources):
             if self.weight[s_id][
                     o_id] == 1:  # weight=0 no need for computation
                 if self.get_value(s_id, o_id) == v:
@@ -143,16 +157,22 @@ class LCA_EM:
     def get_value(self, s_id, o_id):
         mask = (self.claims.source_id == s_id) & (
             self.claims.object_id == o_id)
-        return self.claims[mask].value.values[0]
-
-    def _m_step(self):
-        pass
+        value = None
+        if len(self.claims[mask]) != 0:
+            value = self.claims[mask].value.values[0]
+        return value
 
     def _compute_trust(self):
-        return dict()
+        trust = dict()
+        for s in range(self.n_sources):
+            trust[s] = ed.Bernoulli(probs=self.theta_old[s])
+        return trust
 
-    def _comptue_truth(self):
-        return dict()
+    def _compute_truth(self):
+        truth = dict()
+        for o in self.n_objects:
+            truth[o] = ed.Categorical(probs=self.posterior[o])
+        return truth
 
     def compute_weight_matrix(self):
         """compute weight matrix weight = [w_so]that is is used to train
