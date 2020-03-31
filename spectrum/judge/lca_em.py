@@ -45,6 +45,12 @@ class LCA_EM:
             self.prior[o] = np.ones(
                 shape=(self.domain_size[o], )) / self.domain_size[o]
 
+        # building (s_id, o_id) ->v dict
+        data = claims[['source_id', 'object_id', 'value']].values
+        self.value_index = dict()
+        for i in range(data.shape[0]):
+            self.value_index[(data[i][0], data[i][1])] = data[i][2]
+
         # model parameters, source honesty
         self.theta_old = 0.5 * np.ones(shape=(self.n_sources, ))
         self.theta_new = 0.99 * np.ones(shape=(self.n_sources, ))
@@ -76,10 +82,17 @@ class LCA_EM:
             of truths using probability distribution, which is represented as
             a random variate `ed.RandomVariable`.
         """
-        while (np.linalg.norm(self.theta_old - self.theta_new, ord=2) > alpha):
+        step = 0
+        while (True):
             self.e_step()
             self.m_step()
-            self.theta_old = self.theta_new
+            diff = np.linalg.norm(self.theta_old - self.theta_new, ord=2)
+            print(f'difference at step {step}: {diff} - threshold {alpha}')
+            if (diff < alpha):
+                break
+            else:
+                self.theta_old = self.theta_new
+                step += 1
         return self._compute_trust(), self._compute_truth()
 
     def e_step(self):
@@ -91,13 +104,16 @@ class LCA_EM:
     def m_step(self):
         """update data source honest."""
         for s in range(self.n_sources):
-            number_of_objects = self.weight[s].sum()  # could be faster
-            honest = 0.
-            for o in range(self.n_objects):
-                for v in range(self.domain_size[o]):
-                    mask = self.weight[s][o] * (self.get_value(s, o) == v)
-                    honest = honest + self.posterior[o][v] * mask
-            self.theta_new[s] = honest / number_of_objects
+            self.compute_honest(s)
+
+    def compute_honest(self, s_id):
+        number_of_objects = self.weight[s_id].sum()  # could be faster
+        honest = 0.
+        for o in range(self.n_objects):
+            for v in range(self.domain_size[o]):
+                mask = self.weight[s_id][o] * (self.get_value(s_id, o) == v)
+                honest = honest + self.posterior[o][v] * mask
+        self.theta_new[s_id] = honest / number_of_objects
 
     def compute_joint(self, o_id):
         """compute p(o,B|theta_old)
@@ -155,12 +171,9 @@ class LCA_EM:
         return np.prod(resp)
 
     def get_value(self, s_id, o_id):
-        mask = (self.claims.source_id == s_id) & (
-            self.claims.object_id == o_id)
-        value = None
-        if len(self.claims[mask]) != 0:
-            value = self.claims[mask].value.values[0]
-        return value
+        if (s_id, o_id) in self.value_index:
+            return self.value_index[(s_id, o_id)]
+        return None
 
     def _compute_trust(self):
         trust = dict()
@@ -170,7 +183,7 @@ class LCA_EM:
 
     def _compute_truth(self):
         truth = dict()
-        for o in self.n_objects:
+        for o in range(self.n_objects):
             truth[o] = ed.Categorical(probs=self.posterior[o])
         return truth
 
