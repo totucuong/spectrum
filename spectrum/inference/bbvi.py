@@ -43,6 +43,8 @@ class BBVI:
                  n_gradient_samples=5):
         self.p = p
         self.q = q
+        self.log_p = ed.make_log_joint_fn(self.p)
+        self.log_q = ed.make_log_joint_fn(self.q)
         self.p_vars = p_vars
         self.q_vars = q_vars
         self.n_samples = n_samples
@@ -69,9 +71,6 @@ class BBVI:
         """compute a score loss and return its gradients based
         on the score function estimation.
         """
-        log_p = ed.make_log_joint_fn(self.p)
-        log_q = ed.make_log_joint_fn(self.q)
-
         p_log_prob = []
         q_log_prob = []
 
@@ -83,11 +82,11 @@ class BBVI:
 
             # replay z_s on p(x,z)
             for z_s in q_z_samples:
-                q_log_prob.append(log_q(**z_s))
+                q_log_prob.append(self.log_q(**z_s))
                 with ed.tape() as model_sample:
                     with ed.interception(ed.make_value_setter(**z_s)):
                         self.p()
-                p_log_prob.append(log_p(**model_sample))
+                p_log_prob.append(self.log_p(**model_sample))
 
             p_log_prob = tf.stack(p_log_prob)
             q_log_prob = tf.stack(q_log_prob)

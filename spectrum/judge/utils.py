@@ -1,4 +1,5 @@
 from tensorflow_probability import edward2 as ed
+import tensorflow as tf
 
 
 def print_trace(trace):
@@ -26,3 +27,9 @@ def observe(model, observation):
             model()
 
     return observed_model
+
+
+def logits_for_uniform(batch_dim, domain_size):
+    if domain_size > 1:
+        return tf.math.log(tf.ones((batch_dim, domain_size)) / domain_size)
+    return tf.math.log(0.5 * tf.ones((batch_dim, )))

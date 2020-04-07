@@ -1,7 +1,8 @@
 import pytest
 import pandas as pd
 
-from spectrum.judge.lca_em import LCA_EM
+from spectrum.judge.lca import simpleLCA_EM as LCA_EM
+from spectrum.judge.lca import simpleLCA_VI as LCA_VI
 
 
 @pytest.fixture
@@ -65,3 +66,19 @@ def test_m_step(claims2):
     lca.e_step()
     lca.m_step()
     assert lca.theta_new[1] == 0.5
+
+
+# Test of simpleLCA blax box bbvi
+@pytest.fixture
+def claims3():
+    claims = dict()
+    claims['source_id'] = [0, 0, 1, 1, 2, 4, 3, 5, 6, 7]
+    claims['object_id'] = [0, 1, 1, 0, 2, 2, 2, 3, 3, 3]
+    claims['value'] = [0, 1, 0, 1, 1, 0, 2, 0, 1, 2]
+    claims = pd.DataFrame(data=claims)
+    return claims.sample(claims.shape[0], replace=False)
+
+
+def test_build_domsize_to_objects(claims3):
+    lca = LCA_VI(claims3)
+    assert lca.domsize_to_objects[3][1] == 3

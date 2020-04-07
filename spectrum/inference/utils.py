@@ -82,7 +82,8 @@ def compute_trust_and_truth(q_z):
     """
     with ed.tape() as tape:
         q_z()
-    trust = dict()
-    trust['z_trusts'] = tape.pop('z_trusts')
+    # trust = dict()
+    # trust['z_trusts'] = tape.pop('z_trusts')
     truth = tape.copy()
-    return trust, truth
+    # return trust, truth
+    return None, truth
