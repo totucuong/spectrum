@@ -269,7 +269,24 @@ class simpleLCA_VI:
         self.auxiliary_data = auxiliary_data
         self.build_ds()
         self.init_vars()
-        # self.observed_model = observe(self.model, self.compute_observation())
+        self.observed_model = observe(self.model, self.obs)
+
+    def compute_observation(self):
+        """build observation dictionary.
+
+        Returns
+        -------
+        obs: dict
+            mapping observed random variable to their corresponding observation.
+        """
+        obs = dict()
+
+        def assign(data):
+            obs[f'x_{data.name}'] = data.sort_values(
+                'source_id')['value'].values
+
+        self.claims.groupby('object_id').apply(lambda x: assign(x))
+        return obs
 
     def build_ds(self):
         """build auxiliary data structure"""
@@ -279,6 +296,7 @@ class simpleLCA_VI:
         self.domsize_to_objects = self.build_domsize_to_objects()
         self.object_to_sources = self.build_object_to_sources()
         self.to_batch_idx = self.compute_batch_idx()
+        self.obs = self.compute_observation()
 
     def build_domsize_to_objects(self):
         """build a dictionary mapping domain size to a list of objects having

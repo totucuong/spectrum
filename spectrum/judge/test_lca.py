@@ -1,6 +1,6 @@
 import pytest
 import pandas as pd
-
+import numpy as np
 from spectrum.judge.lca import simpleLCA_EM as LCA_EM
 from spectrum.judge.lca import simpleLCA_VI as LCA_VI
 
@@ -98,6 +98,11 @@ def claims4():
     claims['value'] = [0, 1, 2, 1, 0, 2, 1, 0]
     claims = pd.DataFrame(data=claims)
     return claims.sample(claims.shape[0], replace=False)
+
+
+def test_build_observation(claims4):
+    lca = LCA_VI(claims4)
+    assert np.all(lca.obs['x_2'] == np.array([0, 1, 2]))
 
 
 def test_compute_batch_idx(claims4):
