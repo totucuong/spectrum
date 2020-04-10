@@ -1,7 +1,8 @@
 from .truthdiscoverer import TruthDiscoverer
 from tensorflow_probability import edward2 as ed
 import numpy as np
-from .utils import logits_for_uniform
+from .utils import logits_for_uniform, observe
+import tensorflow as tf
 
 
 class simpleLCA_EM:
@@ -268,13 +269,20 @@ class simpleLCA_VI:
         self.auxiliary_data = auxiliary_data
         self.build_ds()
         self.init_vars()
+        # self.observed_model = observe(self.model, self.compute_observation())
 
     def build_ds(self):
         """build auxiliary data structure"""
-        self.domsize_to_objects = self.build_domsize_dict()
+        self.n_sources, self.n_objects, self.domain_size = self._compute_prob_desc(
+        )
 
-    def build_domsize_dict(self):
-        """build a dictionary mapping domain size to a list of objects
+        self.domsize_to_objects = self.build_domsize_to_objects()
+        self.object_to_sources = self.build_object_to_sources()
+        self.to_batch_idx = self.compute_batch_idx()
+
+    def build_domsize_to_objects(self):
+        """build a dictionary mapping domain size to a list of objects having
+        that domain size.
         
         Returns
         -------
@@ -291,12 +299,41 @@ class simpleLCA_VI:
             domsize_to_objects[data.name] = sorted(data['object_id'].values)
 
         domain_df.groupby('domain_size').apply(lambda data: assign(data))
+
+        for k in domsize_to_objects:
+            domsize_to_objects[k] = sorted(domsize_to_objects[k])
         return domsize_to_objects
 
+    def build_object_to_sources(self):
+        """build a dictionary mapping object to sources that make claims about it.
+        """
+        object_to_sources = dict()
+
+        def assign(data):
+            object_to_sources[data.name] = sorted(data['source_id'].values)
+
+        self.claims.groupby('object_id').apply(lambda data: assign(data))
+        return object_to_sources
+
     def init_vars(self):
-        # self.trainable_variables = []
-        self.latent_vars = []
+        """initialze model and latent variables."""
+        # model vars
         self.model_vars = []
+        self.honest_logits_p = tf.Variable(initial_value=logits_for_uniform(
+            self.n_sources, 1),
+                                           name='honest_logits_p')
+        self._register(self.honest_logits_p, self.model_vars)
+
+        self.object_logits_p = dict()
+        for d in self.domsize_to_objects:
+            self.object_logits_p[d] = tf.Variable(
+                initial_value=logits_for_uniform(
+                    len(self.domsize_to_objects[d]), d),
+                name=f'truth_logits_p_{d}')
+            self._register(self.object_logits_p[d], self.model_vars)
+
+        # latent vars
+        self.latent_vars = []
 
     def model(self):
         """Build a simpleLCA generative model
@@ -306,17 +343,93 @@ class simpleLCA_VI:
 
         x_o_id rv batchs all observed rvs of objects o_id.
         """
-        pass
-        # for dom_size in
+        # z_truth
+        z_truths = dict()
+        for d in self.domsize_to_objects:
+            z_truths[d] = ed.Categorical(name=f'z_truth_{d}',
+                                         logits=self.object_logits_p[d])
 
-    def compute_obs(self):
-        pass
+        # x_oid
+        for o_id in range(self.n_objects):
+            truth_rv = z_truths[self.domain_size[o_id]]
+            truth = truth_rv[self.to_batch_idx[o_id]]
+            ed.Categorical(name=f'x_{o_id}',
+                           probs=self.compute_observed_probs(o_id, truth))
 
-    def compute_probs(o_id):
-        pass
+    def _compute_rank(self, o_id):
+        rank = 0
+        for o in self.domsize_to_objects[self.domain_size[o_id]]:
+            if o_id > o:
+                rank += 1
+        return rank
+
+    def compute_batch_idx(self):
+        """compute batch index dictionary.
+
+        Returns
+        -------
+        to_batch_idx: dict
+            to_batch_idx[o_id] is the batch index of an object into its corresponding batched z_truth
+        """
+        to_batch_idx = dict()
+        for o_id in range(self.n_objects):
+            to_batch_idx[o_id] = self._compute_rank(o_id)
+        return to_batch_idx
+
+    def compute_observed_probs(self, o_id, truth):
+        """compute observation for an object.
+
+        Parameters
+        ----------
+        o_id: int
+            object id.
+
+        truth: int
+            the truth value of the object.
+
+        Returns
+        -------
+        observed_probs: tf.Tensor
+            a |S_o_id|*domsize(o_id) tf.Tensor of observed probabilities.
+        """
+        domsize = self.domain_size[o_id]
+        observed_probs = []
+        for s in self.object_to_sources[o_id]:
+            honest_prob = tf.math.sigmoid(self.honest_logits_p[s])
+            observed_probs.append(
+                self._build_claim_probs(honest_prob, domsize, truth))
+        return tf.stack(observed_probs)
+
+    def _build_claim_probs(self, honest_prob, domain_size, truth):
+        mask = tf.reduce_sum(tf.one_hot([truth], domain_size), axis=0)
+        other = tf.ones(domain_size) - mask
+        probs = mask * honest_prob * tf.ones(domain_size) + other * (
+            (1 - honest_prob) / (domain_size - 1)) * tf.ones(domain_size)
+        return probs
 
     def _register(self, variable, collection):
         if isinstance(variable, list):
             collection.extend(variable)
         else:
             collection.append(variable)
+
+    def _compute_prob_desc(self):
+        """compute statistics of a given truth discovery problem.
+
+        Returns
+        -------
+        n_sources: int
+            number of data sources
+
+        n_objects: int
+            number of objects
+
+        domain_size: dict
+            domain_size[object_id] is the number of unique values of object
+            object_id, i.e., |m| in the original paper.
+        """
+        problem_sizes = self.claims.nunique()
+        n_sources = problem_sizes['source_id']
+        n_objects = problem_sizes['object_id']
+        domain_size = self.claims.groupby('object_id').max()['value'] + 1
+        return n_sources, n_objects, domain_size
