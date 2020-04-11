@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 from spectrum.judge.lca import simpleLCA_EM as LCA_EM
 from spectrum.judge.lca import simpleLCA_VI as LCA_VI
+from tensorflow_probability import edward2 as ed
+import tensorflow as tf
 
 
 @pytest.fixture
@@ -116,9 +118,9 @@ def test_compute_observed_probs_VI(claims4):
     assert probs.shape == (3, 3)
     probs = probs.numpy()
 
-    assert probs[0][1] == pytest.approx(0.33333334)
-    assert probs[0][0] == pytest.approx(0.33333334)
-    assert probs[0][2] == pytest.approx(0.33333334)
+    assert probs[0][1] == 0.5
+    assert probs[0][0] == 0.25
+    assert probs[0][2] == 0.25
 
 
 def test_build_claim_obs(claims4):
@@ -128,3 +130,25 @@ def test_build_claim_obs(claims4):
     assert probs[1] == 0.5
     assert probs[0] == 0.25
     assert probs[2] == 0.25
+
+
+@pytest.fixture
+def claims6():
+    claims = dict()
+    claims['source_id'] = [0, 0, 1, 1, 2]
+    claims['object_id'] = [0, 1, 1, 0, 0]
+    claims['value'] = [0, 1, 0, 1, 2]
+    return pd.DataFrame(data=claims)
+
+
+def test_lca_model(claims6):
+    lca = LCA_VI(claims6)
+    log_joint_fn = ed.make_log_joint_fn(lca.model)
+    sample = dict()
+    sample['z_truth_2'] = tf.constant([0])
+    sample['z_truth_3'] = tf.constant([1])
+    sample['x_0'] = tf.constant([1, 0, 1])
+    sample['x_1'] = tf.constant([0, 1])
+    log_prob = tf.math.log(0.3333333) + 5 * tf.math.log(0.5) + tf.math.log(
+        0.25)
+    assert log_prob.numpy() == log_joint_fn(**sample).numpy()

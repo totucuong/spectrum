@@ -3,6 +3,8 @@ from tensorflow_probability import edward2 as ed
 import numpy as np
 from .utils import logits_for_uniform, observe
 import tensorflow as tf
+from spectrum.inference.bbvi import BBVI
+from spectrum.inference.utils import compute_trust_and_truth
 
 
 class simpleLCA_EM:
@@ -337,7 +339,7 @@ class simpleLCA_VI:
         """initialze model and latent variables."""
         # model vars
         self.model_vars = []
-        self.honest_logits_p = tf.Variable(initial_value=logits_for_uniform(
+        self.honest_logits_p = tf.Variable(initial_value=tf.zeros(
             self.n_sources, 1),
                                            name='honest_logits_p')
         self._register(self.honest_logits_p, self.model_vars)
@@ -352,6 +354,13 @@ class simpleLCA_VI:
 
         # latent vars
         self.latent_vars = []
+        self.object_logits_q = dict()
+        for d in self.domsize_to_objects:
+            self.object_logits_q[d] = tf.Variable(
+                initial_value=logits_for_uniform(
+                    len(self.domsize_to_objects[d]), d),
+                name=f'truth_logits_q_{d}')
+            self._register(self.object_logits_q[d], self.latent_vars)
 
     def model(self):
         """Build a simpleLCA generative model
@@ -365,7 +374,8 @@ class simpleLCA_VI:
         z_truths = dict()
         for d in self.domsize_to_objects:
             z_truths[d] = ed.Categorical(name=f'z_truth_{d}',
-                                         logits=self.object_logits_p[d])
+                                         logits=tf.math.log_softmax(
+                                             self.object_logits_p[d]))
 
         # x_oid
         for o_id in range(self.n_objects):
@@ -373,6 +383,66 @@ class simpleLCA_VI:
             truth = truth_rv[self.to_batch_idx[o_id]]
             ed.Categorical(name=f'x_{o_id}',
                            probs=self.compute_observed_probs(o_id, truth))
+
+    def mean_field_model(self):
+        """a mean field varational model"""
+        # q_truth
+        for d in self.domsize_to_objects:
+            ed.Categorical(name=f'z_truth_{d}',
+                           logits=tf.math.log_softmax(self.object_logits_q[d]))
+
+    def discover(self,
+                 epochs=1,
+                 learning_rate=1e-4,
+                 report_every=1,
+                 n_samples=1,
+                 compute_variance=False,
+                 n_gradient_samples=5):
+        """Discover true claims and data source reliability
+
+        Parameters
+        ----------
+        n_samples: int
+        the number of samples to be used to estimate gradients of BBVI loss.
+
+        compute_variance: bool
+            if compute_variance=False then variance of score-function gradient estimator
+            is estimated at each epoch using n_gradient_samples.
+
+        n_gradient_samples: bool
+            the number of gradient estimation to be used when compute its variance. It will
+            be ignored if compute_variance=False. 
+
+        Returns
+        -------
+        trust: dict
+            a dictionary `{source_id, ed.RandomVariable}`. Some algorithmic
+            truth discovery method such as majority voting or Truth Finder,
+            does not model source reliability using distribution, instead they
+            output a reliablity score. We capture this situation using
+            ed.Deterministic(loc=reliablity_score). For other methods, such as
+            LCAs, we use ed.Categorical to model reliablities of data sources.
+
+        truth: dict
+            a dictionary `{object_id, ed.RandomVariable}` mapping `object_id`
+            to an `ed.RandomVariable`. In spectrum, we model the uncertainty
+            of truths using probability distribution, which is represented as
+            a random variate `ed.RandomVariable`.
+        """
+        # peform black-box bvi
+        self.bbvi = BBVI(p=self.observed_model,
+                         q=self.mean_field_model,
+                         p_vars=self.model_vars,
+                         q_vars=self.latent_vars,
+                         n_samples=n_samples,
+                         compute_variance=compute_variance,
+                         n_gradient_samples=n_gradient_samples)
+
+        self.bbvi.train(epochs=epochs,
+                        learning_rate=learning_rate,
+                        report_every=report_every)
+
+        # return compute_trust_and_truth(self.mean_field_model)
 
     def _compute_rank(self, o_id):
         rank = 0
