@@ -5,6 +5,7 @@ from .utils import logits_for_uniform, observe
 import tensorflow as tf
 from spectrum.inference.bbvi import BBVI
 from spectrum.inference.utils import compute_trust_and_truth
+import pandas as pd
 
 
 class simpleLCA_EM:
@@ -442,7 +443,27 @@ class simpleLCA_VI:
                         learning_rate=learning_rate,
                         report_every=report_every)
 
-        # return compute_trust_and_truth(self.mean_field_model)
+        return self.compute_truth()
+
+    def compute_truth(self):
+        """compute discovered truths.
+        
+        Return
+        ------
+        discovered_truths: pd.DataFrame
+            a data frame of two columns object_id, value
+        """
+        with ed.tape() as sample:
+            self.mean_field_model()
+        values = []
+        o_ids = []
+        for d in sorted(self.domsize_to_objects.keys()):
+            values.extend(
+                np.argmax(tf.math.exp(sample[f'z_truth_{d}'].distribution.
+                                      parameters['logits']).numpy(),
+                          axis=1))
+            o_ids.extend(self.domsize_to_objects[d])
+        return pd.DataFrame(data={'object_id': o_ids, 'value': values})
 
     def _compute_rank(self, o_id):
         rank = 0
